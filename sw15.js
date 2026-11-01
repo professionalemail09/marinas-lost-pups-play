@@ -2,7 +2,7 @@
 // index.html / navigations: network-first (new builds always win; cache only when offline).
 // Versioned ?v= scripts: cache-first (URL changes every release, so never stale).
 // Other static assets: stale-while-revalidate. Old caches are deleted on activate.
-const C='mlp-v0-4-5',F=["./", "index.html", "manifest.json", "fonts/fredoka.woff2", "fonts/dmsans.woff2", "fonts/nunito.woff2", "fonts/atkinson-400.woff2", "fonts/atkinson-700.woff2", "fonts/outfit.woff2", "assets/parks/CREDITS.md", "logo.webp", "marina_face.webp", "content.json", "icons/icon-1024.png", "icons/icon-180.png", "icons/icon-192.png", "icons/icon-512.png", "art/bg_home.webp", "art/bg_map.webp", "art/bg_shop.webp", "art/bg_title.webp", "app.v0-4-5.js?v=0-4-5"];
+const C='mlp-v0-4-6',F=["./", "index.html", "manifest.json", "fonts/fredoka.woff2", "fonts/dmsans.woff2", "fonts/nunito.woff2", "fonts/atkinson-400.woff2", "fonts/atkinson-700.woff2", "fonts/outfit.woff2", "assets/parks/CREDITS.md", "logo.webp", "marina_face.webp", "content.json", "icons/icon-1024.png", "icons/icon-180.png", "icons/icon-192.png", "icons/icon-512.png", "art/bg_home.webp", "art/bg_map.webp", "art/bg_shop.webp", "art/bg_title.webp", "app.v0-4-6.js?v=0-4-6"];
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(C).then(c=>Promise.all(F.map(f=>c.add(new Request(f,{cache:'reload'})).catch(()=>{})))));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==C).map(x=>caches.delete(x)))).then(()=>self.clients.claim()));});
 const put=(r,res)=>{if(res&&res.ok&&res.type==='basic'){const cp=res.clone();caches.open(C).then(c=>c.put(r,cp));}return res;};
