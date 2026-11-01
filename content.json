@@ -1,0 +1,57 @@
+{
+ "version": 1,
+ "updated": "2026-10-27",
+ "motd": "Welcome to Marina's Lost Pups! Every lost dog has someone waiting at home.",
+ "riddles": [
+  {
+   "q": "I have a tail and a head but no body. I am not a dog. What am I?",
+   "a": "A coin"
+  },
+  {
+   "q": "What kind of dog keeps the best time?",
+   "a": "A watch dog"
+  },
+  {
+   "q": "I get wetter the more I dry. Every dog loves me after a bath. What am I?",
+   "a": "A towel"
+  },
+  {
+   "q": "What do you call a dog magician?",
+   "a": "A labracadabrador"
+  },
+  {
+   "q": "I follow you all day but vanish at night. Scout chases me anyway. What am I?",
+   "a": "Your shadow"
+  },
+  {
+   "q": "What has four legs, wags, and is never on time? (Hint: it is always ruff.)",
+   "a": "A late puppy"
+  },
+  {
+   "q": "The more you take, the more you leave behind. Sniff dogs follow them. What are they?",
+   "a": "Footsteps"
+  }
+ ],
+ "daily": {
+  "2026-10-31": {
+   "q": "Why did the dog dress up as a ghost on Halloween?",
+   "a": "To be a little boo-dle"
+  }
+ },
+ "sniffItems": [
+  "a squeaky bone",
+  "a lost tennis ball",
+  "Grandpa's slipper",
+  "a buried biscuit",
+  "a red frisbee",
+  "a chewed sock",
+  "a mailman's glove",
+  "a rubber duck"
+ ],
+ "payouts": {
+  "Skill": 30,
+  "Mixed": 22,
+  "Luck": 12,
+  "loss": 5
+ }
+}
