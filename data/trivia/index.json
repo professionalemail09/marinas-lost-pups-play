@@ -1,0 +1,97 @@
+{
+  "version": 1,
+  "previous": 62,
+  "total": 6622,
+  "categories": [
+    {
+      "id": "animal-kingdom",
+      "name": "Animal Kingdom",
+      "file": "animal-kingdom.json",
+      "count": 103
+    },
+    {
+      "id": "animals-dogs",
+      "name": "Animals & Dogs",
+      "file": "animals-dogs.json",
+      "count": 190
+    },
+    {
+      "id": "dog-breeds",
+      "name": "Dog Breeds",
+      "file": "dog-breeds.json",
+      "count": 39
+    },
+    {
+      "id": "famous-dogs",
+      "name": "Famous Dogs",
+      "file": "famous-dogs.json",
+      "count": 23
+    },
+    {
+      "id": "flags",
+      "name": "Flags",
+      "file": "flags.json",
+      "count": 158
+    },
+    {
+      "id": "geography",
+      "name": "Geography",
+      "file": "geography.json",
+      "count": 3318
+    },
+    {
+      "id": "history",
+      "name": "History",
+      "file": "history.json",
+      "count": 262
+    },
+    {
+      "id": "national-parks",
+      "name": "National Parks",
+      "file": "national-parks.json",
+      "count": 60
+    },
+    {
+      "id": "numbers",
+      "name": "Numbers",
+      "file": "numbers.json",
+      "count": 828
+    },
+    {
+      "id": "puppy-care",
+      "name": "Puppy Care",
+      "file": "puppy-care.json",
+      "count": 29
+    },
+    {
+      "id": "safety-in-industry",
+      "name": "Safety in Industry",
+      "file": "safety-in-industry.json",
+      "count": 494
+    },
+    {
+      "id": "science",
+      "name": "Science",
+      "file": "science.json",
+      "count": 308
+    },
+    {
+      "id": "united-states",
+      "name": "United States",
+      "file": "united-states.json",
+      "count": 246
+    },
+    {
+      "id": "words",
+      "name": "Words",
+      "file": "words.json",
+      "count": 359
+    },
+    {
+      "id": "world-cultures",
+      "name": "World Cultures",
+      "file": "world-cultures.json",
+      "count": 205
+    }
+  ]
+}
