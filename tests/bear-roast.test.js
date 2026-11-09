@@ -1,6 +1,6 @@
 const fs = require("fs");
 const assert = require("assert");
-const s = fs.readFileSync(require("path").join(__dirname, "..", "app.v0-5-4.js"), "utf8");
+const s = fs.readFileSync(require("path").join(__dirname, "..", "app.v0-5-5.js"), "utf8");
 const start = s.lastIndexOf(";(()=>{");
 assert(start > 0, "roast iife");
 const tail = s.slice(start);

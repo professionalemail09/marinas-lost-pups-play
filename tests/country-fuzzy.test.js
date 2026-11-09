@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const src = fs.readFileSync(path.join(__dirname, "..", "app.v0-5-4.js"), "utf8");
+const src = fs.readFileSync(path.join(__dirname, "..", "app.v0-5-5.js"), "utf8");
 function grab(name) {
   const start = src.indexOf("function " + name + "(");
   if (start < 0) throw new Error("missing " + name);
