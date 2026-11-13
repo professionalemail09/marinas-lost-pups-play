@@ -1,7 +1,7 @@
 {
   "version": 1,
   "previous": 62,
-  "total": 6622,
+  "total": 6563,
   "categories": [
     {
       "id": "animal-kingdom",
@@ -19,19 +19,19 @@
       "id": "dog-breeds",
       "name": "Dog Breeds",
       "file": "dog-breeds.json",
-      "count": 39
+      "count": 29
     },
     {
       "id": "famous-dogs",
       "name": "Famous Dogs",
       "file": "famous-dogs.json",
-      "count": 23
+      "count": 14
     },
     {
       "id": "flags",
       "name": "Flags",
       "file": "flags.json",
-      "count": 158
+      "count": 140
     },
     {
       "id": "geography",
@@ -43,7 +43,7 @@
       "id": "history",
       "name": "History",
       "file": "history.json",
-      "count": 262
+      "count": 256
     },
     {
       "id": "national-parks",
@@ -61,7 +61,7 @@
       "id": "puppy-care",
       "name": "Puppy Care",
       "file": "puppy-care.json",
-      "count": 29
+      "count": 21
     },
     {
       "id": "safety-in-industry",
@@ -73,7 +73,7 @@
       "id": "science",
       "name": "Science",
       "file": "science.json",
-      "count": 308
+      "count": 306
     },
     {
       "id": "united-states",
@@ -91,7 +91,7 @@
       "id": "world-cultures",
       "name": "World Cultures",
       "file": "world-cultures.json",
-      "count": 205
+      "count": 199
     }
   ]
 }
