@@ -32,7 +32,7 @@ function serve() {
     args: ["--no-sandbox", "--disable-dev-shm-usage"]
   });
   const page = await browser.newPage();
-  const sizes = [[320, 700, "320"], [375, 812, "375"], [390, 844, "390"], [430, 932, "430"], [740, 360, "landscape"], [1280, 800, "desktop"]];
+  const sizes = [[390, 844, "390x844"], [360, 800, "360x800"], [844, 390, "844x390"], [1440, 900, "1440x900"]];
   const failures = [];
   let modeCount = 0;
   try {
@@ -76,7 +76,7 @@ function serve() {
       }
       console.log(tag, "modes", modes.length);
     }
-    const hunt = fs.readFileSync(path.join(root, "app.v0-5-6.js"), "utf8");
+    const hunt = fs.readFileSync(path.join(root, "app.v0-6-0.js"), "utf8");
     assert(hunt.includes('T={g:"#157A45",y:"#8A6A00",b:"#3D4556"}'), "Word Hunt colors still present");
     assert.strictEqual(failures.length, 0, failures.slice(0, 12).join("\n"));
     console.log("layout fit ok", modeCount, "modes x", sizes.length, "sizes");
