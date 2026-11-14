@@ -1,23 +1,41 @@
-Marcia's Litter Legends - Third-party notices
+Marina's Lost Pups - Third-party notices
 
 1. Fredoka font (fonts/fredoka.woff2 - subset of the Fredoka variable font, wdth 100, wght 400-700)
    Copyright 2016 The Fredoka Project Authors. Licensed under the SIL Open Font License 1.1.
    Full text: licenses/OFL-Fredoka.txt
 
-2. PeerJS (peerjs.min.js) - used only for online duels; loaded on demand.
+2. DM Sans (fonts/dmsans.woff2)
+   Copyright 2014-present The DM Sans Project Authors. SIL Open Font License 1.1.
+   Full text: licenses/OFL-DMSans.txt
+
+3. Nunito (fonts/nunito.woff2)
+   Copyright 2014 The Nunito Project Authors. SIL Open Font License 1.1.
+   Full text: licenses/OFL-Nunito.txt
+
+4. Atkinson Hyperlegible (fonts/atkinson-400.woff2, fonts/atkinson-700.woff2)
+   Copyright 2020, Braille Institute of America, Inc. SIL Open Font License 1.1.
+   Full text: licenses/OFL-AtkinsonHyperlegible.txt
+
+5. Outfit (fonts/outfit.woff2)
+   Copyright 2021 The Outfit Project Authors (https://github.com/Outfitio/Outfit-Fonts). SIL Open Font License 1.1.
+   Full text: licenses/OFL-Outfit.txt
+
+6. PeerJS (peerjs.min.js) - used only for online duels; loaded on demand.
    Copyright (c) 2015 Michelle Bu and Eric Zhang. MIT License.
    Full text: licenses/LICENSE-PeerJS.txt
    Online duels use the public PeerJS cloud signaling server (0.peerjs.com), subject to its own terms.
 
-3. cordova-plugin-purchase 13.19.1 (plugins/cordova-plugin-purchase/www/store.js) - Android app only, in-app purchases.
-   Loaded on demand only when the Sparkle Store / a purchase flow opens on a device; never loaded on the web.
-   Copyright (c) 2014-, Jean-Christophe Hoelt and contributors. MIT License.
-   Full text: licenses/LICENSE-cordova-plugin-purchase.txt
+7. Park Hunt photographs (assets/parks/ph-01.jpg through ph-63.jpg)
+   Every photograph is public domain or CC0. Authors, source URLs and licence tags are listed in
+   assets/parks/CREDITS.md and assets/parks/credits.json. Credits are not shown on the question
+   screen. Typical sources: U.S. National Park Service (U.S. government work, public domain),
+   U.S. Geological Survey (public domain), and photographers who dedicated their work to the
+   public domain under CC0 (https://creativecommons.org/publicdomain/zero/1.0/).
 
-4. Capacitor (@capacitor/core, @capacitor/android and plugins) - Android app runtime.
-   Copyright (c) 2017-present Drifty Co. MIT License.
-   Full text: licenses/LICENSE-Capacitor.txt
-   Google Play Billing, Google Mobile Ads (AdMob) and Firebase SDKs are covered by their own Google terms and the
-   open-source notices bundled in the Android app.
+8. Country terrain images (assets/terrain)
+   Derived from Natural Earth (naturalearthdata.com), public domain.
+   See assets/terrain/CREDITS.md.
 
-Outfit (www/fonts/outfit.woff2), Copyright 2021 The Outfit Project Authors (https://github.com/Outfitio/Outfit-Fonts). SIL Open Font License 1.1, see OFL-Outfit.txt.
+9. Country names, shapes and related geography facts used in World Sniff, Flag Fetch and Globe Hunt
+   Natural Earth (public domain) via the world-atlas package (TopoJSON), ISC licence, © Mike Bostock.
+   Additional name data from mledoze/countries is noted in data/trivia/CREDITS.md.

@@ -8,7 +8,7 @@ const assert = require("assert");
 const vm = require("vm");
 
 const root = path.join(__dirname, "..");
-const src = fs.readFileSync(path.join(root, "app.v0-5-6.js"), "utf8");
+const src = fs.readFileSync(path.join(root, "app.v0-6-0.js"), "utf8");
 const start = src.indexOf("function a(O,z){const R=Array(5)");
 const end = src.indexOf("window.__wordMark=a");
 assert(start > 0 && end > start, "mark helpers missing");
@@ -188,7 +188,7 @@ async function paint(page) {
       assert.strictEqual(played.rows[0], "alley:gybyb", name);
       assert.deepStrictEqual(played.keys, { a: "g", l: "y", e: "y", y: "b" });
       const view = await paint(page);
-      assert.strictEqual(view.version, "0.5.6");
+      assert.strictEqual(view.version, "0.6.0");
       for (const tile of view.tiles) {
         assert(tile.fill, name + " tile " + tile.ch + " " + tile.mark + " missing color");
         assert(tile.white >= 3, name + " tile " + tile.ch + " letter is not white (" + tile.white + ")");

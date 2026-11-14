@@ -24,7 +24,7 @@ function serve() {
 }
 
 (async () => {
-  const src = fs.readFileSync(path.join(root, "app.v0-5-6.js"), "utf8");
+  const src = fs.readFileSync(path.join(root, "app.v0-6-0.js"), "utf8");
   assert(!src.includes('modal="age22"') || src.includes("function needAge(){return!1}"), "age check must not be able to block play");
   assert(src.includes('let scene="modes"'));
   assert(!src.includes("13 or older\",()=>setAge") || src.includes("function needAge(){return!1}"));
@@ -57,7 +57,7 @@ function serve() {
         cards: (btns || []).length
       };
     });
-    assert.strictEqual(state.version, "0.5.6");
+    assert.strictEqual(state.version, "0.6.0");
     assert.strictEqual(state.scene, "modes", "first load should be the mode menu");
     assert.strictEqual(state.modal, null, "no age prompt");
     assert.strictEqual(state.asksAge, false);
