@@ -39,3 +39,11 @@ Marina's Lost Pups - Third-party notices
 9. Country names, shapes and related geography facts used in World Sniff, Flag Fetch and Globe Hunt
    Natural Earth (public domain) via the world-atlas package (TopoJSON), ISC licence, © Mike Bostock.
    Additional name data from mledoze/countries is noted in data/trivia/CREDITS.md.
+
+10. QR Code Generator (vendor/qr/qrcode.js)
+    Copyright (c) 2009 Kazuhiko Arase. MIT License.
+    Full text: vendor/qr/qrcode.LICENSE
+
+11. jsQR (vendor/qr/jsQR.js)
+    Copyright (c) 2017 Cozmo. Apache License 2.0.
+    Full text: vendor/qr/jsQR.LICENSE
