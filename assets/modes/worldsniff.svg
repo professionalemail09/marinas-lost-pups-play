@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 128 128">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1B4E86"/><stop offset="1" stop-color="#0E3A28"/></linearGradient>
+<radialGradient id="gl" cx="40%" cy="12%" r="65%"><stop offset="0" stop-color="#fff" stop-opacity=".35"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/></radialGradient>
+<filter id="glow"><feGaussianBlur stdDeviation="3.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<rect width="128" height="128" fill="url(#bg)"/>
+<path d="M34 58 L46 22 L70 18 L96 30 L104 48 L90 62 L68 66 L48 60 Z" fill="#FFE9A0" filter="url(#glow)"/>
+<path d="M52 40 L60 28 L66 42 Z" fill="#E2B15A"/>
+<path d="M78 34 L90 38 L82 50 Z" fill="#F0C14A"/>
+<ellipse cx="64" cy="98" rx="30" ry="16" fill="#F4C79A"/>
+<ellipse cx="52" cy="98" rx="6" ry="7" fill="#2A2118"/>
+<ellipse cx="76" cy="98" rx="6" ry="7" fill="#2A2118"/>
+
+<rect width="128" height="128" fill="url(#gl)"/>
+</svg>

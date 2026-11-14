@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 128 128">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#10281C"/><stop offset="1" stop-color="#0A1C16"/></linearGradient>
+<radialGradient id="gl" cx="40%" cy="18%" r="70%"><stop offset="0" stop-color="#fff" stop-opacity=".42"/><stop offset=".55" stop-color="#fff" stop-opacity="0"/></radialGradient>
+<filter id="ds" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="2" stdDeviation="1.6" flood-color="#062016" flood-opacity=".45"/></filter>
+<linearGradient id="gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE7A3"/><stop offset="1" stop-color="#E0A23A"/></linearGradient>
+</defs>
+<rect width="128" height="128" fill="url(#bg)"/>
+
+<g filter="url(#ds)">
+<rect x="18" y="34" width="28" height="28" rx="4" fill="#157A45"/><text x="32" y="54" text-anchor="middle" font-family="Nunito,sans-serif" font-size="16" font-weight="700" fill="#fff">W</text>
+<rect x="50" y="34" width="28" height="28" rx="4" fill="#C4A035"/><text x="64" y="54" text-anchor="middle" font-family="Nunito,sans-serif" font-size="16" font-weight="700" fill="#fff">O</text>
+<rect x="82" y="34" width="28" height="28" rx="4" fill="#5C677C"/><text x="96" y="54" text-anchor="middle" font-family="Nunito,sans-serif" font-size="16" font-weight="700" fill="#fff">R</text>
+<rect x="34" y="68" width="28" height="28" rx="4" fill="#3D4556"/><text x="48" y="88" text-anchor="middle" font-family="Nunito,sans-serif" font-size="16" font-weight="700" fill="#fff">D</text>
+<rect x="66" y="68" width="28" height="28" rx="4" fill="#E7F3EC"/><text x="80" y="88" text-anchor="middle" font-family="Nunito,sans-serif" font-size="16" font-weight="700" fill="#12382C">?</text>
+</g>
+
+<rect width="128" height="128" fill="url(#gl)"/>
+</svg>
