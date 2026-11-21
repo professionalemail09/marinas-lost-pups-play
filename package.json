@@ -2,6 +2,6 @@
   "name": "marinas-lost-pups-play",
   "private": true,
   "scripts": {
-    "test": "node tests/age-gate.test.js && node tests/bear-roast.test.js && node tests/country-fuzzy.test.js && node tests/geo-bearing.test.js && node tests/parkhunt-no-name.test.js && node tests/wordhunt-eval.test.js && node tests/worldsniff-replay.test.js && node tests/layout-fit.test.js"
+    "test": "node tests/age-gate.test.js && node tests/bear-roast.test.js && node tests/country-fuzzy.test.js && node tests/geo-bearing.test.js && node tests/parkhunt-no-name.test.js && node tests/wordhunt-eval.test.js && node tests/worldsniff-replay.test.js && node tests/layout-fit.test.js && node tests/nearby-lan.test.js"
   }
 }
