@@ -3,11 +3,11 @@
    Bearings use the initial course from guess to target. */
 const fs = require("fs");
 const path = require("path");
-const src = fs.readFileSync(path.join(__dirname, "..", "app.v0-4-9.js"), "utf8");
+const src = fs.readFileSync(path.join(__dirname, "..", "app.v0-6-0.js"), "utf8");
 const xm = src.match(/function X\(Q,oe\)\{[^}]+\}/);
 const sm = src.match(/function se\(Q,oe\)\{[^}]+\}/);
 if (!xm || !sm) {
-  console.error("Could not find km/bearing functions in app.v0-4-9.js");
+  console.error("Could not find km/bearing functions in app.v0-6-0.js");
   process.exit(1);
 }
 const ae = Math.PI / 180;
