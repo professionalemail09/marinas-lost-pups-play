@@ -93,13 +93,21 @@ async function boot(page) {
     assert(pin.scores[0] > 1, "holding the thumb scores, got " + pin.scores[0]);
     await page.screenshot({ path: path.join(shots, "thumbjitsu-pin-multiplier.png") });
 
+    const ring = await page.evaluate(() => __thumb.debug.encircle());
+    const enc = (ring.holds || []).find((h) => h.kind === "encircle");
+    assert(enc, "a closed ring around a hand scores: " + JSON.stringify({ holds: ring.holds, wrap: ring.wrap }));
+    assert(ring.scores[0] > 0.4, "encircle scores by time held, got " + ring.scores[0]);
+    assert(!(ring.holds || []).some((h) => h.kind === "grab"), "grabs do not score");
+    await page.waitForTimeout(120);
+    await page.screenshot({ path: path.join(shots, "thumbjitsu-encircle.png") });
+
     const feet = await page.evaluate(() => __thumb.debug.bothFeet());
     assert(feet.phase === "round" && feet.reason === "feet" && feet.winner === 0, "both feet is an instant round win: " + JSON.stringify({ phase: feet.phase, reason: feet.reason, winner: feet.winner, holds: feet.holds }));
     await page.screenshot({ path: path.join(shots, "thumbjitsu-both-feet.png") });
 
     for (const mode of ["easy", "normal", "hard"]) {
       const seen = await page.evaluate((m) => __thumb.debug.plans(m), mode);
-      ["thumb", "grab", "block", "cover", "double", "step", "feint", "pry"].forEach((plan) => {
+      ["thumb", "encircle", "block", "cover", "double", "step", "feint", "pry"].forEach((plan) => {
         assert(seen.indexOf(plan) >= 0, mode + " AI did not use " + plan + " (" + seen.join(",") + ")");
       });
     }

@@ -9,7 +9,7 @@
   var TIP_R = 0.040;
   var FOOT_SOLE = 0.066;
   var FOOT_CORE = 0.028;
-  var PLANS = ["thumb", "grab", "block", "cover", "double", "step", "feint", "pry"];
+  var PLANS = ["thumb", "encircle", "block", "cover", "double", "step", "feint", "pry"];
   var TIPS = {
     thumb: { x: -0.52, y: -0.08 },
     index: { x: -0.30, y: -0.88 },
@@ -241,13 +241,49 @@
   }
 
   function multOf(h) {
-    if (h.kind === "thumb") return 1 + Math.min(3, h.t * 0.85);
+    if (h.kind === "thumb") return 1 + Math.min(3, h.t * 0.8);
     if (h.kind === "cover") {
-      var m = 1 + Math.min(2, h.t * 0.6);
+      var m = 1 + Math.min(2, h.t * 0.5);
       return h.finger === "pinky" ? m * 1.25 : m;
     }
-    var g = 1 + Math.min(0.7, h.t * 0.25);
-    return h.finger === "middle" ? g * 1.35 : g;
+    if (h.kind === "encircle") {
+      var e = 1 + Math.min(2, h.t * 0.5);
+      return h.finger === "five" ? e * 1.2 : e;
+    }
+    return 1;
+  }
+  function scoreBase(h) {
+    if (h.kind === "thumb") return 4;
+    if (h.kind === "cover") return 3;
+    if (h.kind === "encircle") return 2.5;
+    return 0;
+  }
+  function pointIn(pt, poly) {
+    var inside = false, i, j;
+    for (i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      var a = poly[i], b = poly[j];
+      if ((a.y > pt.y) !== (b.y > pt.y) && pt.x < (b.x - a.x) * (pt.y - a.y) / ((b.y - a.y) || 1e-9) + a.x) inside = !inside;
+    }
+    return inside;
+  }
+  function wrapOf(attacker, defender) {
+    var tips = allTips(attacker);
+    var center = { x: defender.x, y: defender.y };
+    if (hypot(attacker.x - center.x, attacker.y - center.y) > 0.15) return null;
+    function poly(names) {
+      var pts = names.map(function (n) {
+        var p = tips[n];
+        return { x: p.x, y: p.y, a: Math.atan2(p.y - attacker.y, p.x - attacker.x), n: n };
+      });
+      pts.sort(function (a, b) { return a.a - b.a; });
+      return [{ x: attacker.x, y: attacker.y }].concat(pts);
+    }
+    if (pointIn(center, poly(TIP_NAMES))) return { full: true, lead: closestTip(tips, center) };
+    var far = TIP_NAMES.slice().sort(function (a, b) {
+      return hypot(tips[b].x - center.x, tips[b].y - center.y) - hypot(tips[a].x - center.x, tips[a].y - center.y);
+    })[0];
+    if (pointIn(center, poly(TIP_NAMES.filter(function (n) { return n !== far; })))) return { full: false, lead: closestTip(tips, center) };
+    return null;
   }
 
   function seek(hand, x, y, speed, dt) {
@@ -288,6 +324,7 @@
       else if (ai.plan === "double") say("Bear", "Both feet. Don't let them sit.");
       else if (ai.plan === "feint") say("Kenai", "That's a feint. Don't bite.");
       else if (ai.plan === "thumb") say("Bear", "Thumb coming in.");
+      else if (ai.plan === "encircle") say("Kenai", "They're closing a ring on a hand.");
     }
     if (ai.wind > 0) { ai.wind -= dt; return; }
     var opp = G.players[0];
@@ -312,9 +349,17 @@
     if (plan === "thumb") {
       aimHand(0, "thumb", tipWorld(opp.hands[0], "thumb"));
       aimHand(1, "grab" === plan ? "middle" : "index", tipWorld(opp.hands[1], "index"));
-    } else if (plan === "grab") {
-      aimHand(0, "middle", tipWorld(opp.hands[0], "index"));
-      aimHand(1, "middle", tipWorld(opp.hands[1], "middle"));
+    } else if (plan === "encircle") {
+      [0, 1].forEach(function (hi) {
+        var target = opp.hands[hi];
+        var h = me.hands[hi];
+        var dir = Math.atan2(target.y - h.y, target.x - h.x);
+        var faceAng = dir + Math.PI / 2;
+        var fwd = rot(0, -0.09, faceAng);
+        seek(h, clamp(target.x - fwd.x + err(), 0.06, 0.94), clamp(target.y - fwd.y + err(), 0.06, 0.94), diff.speed, dt);
+        face(h, faceAng, dt);
+        h.finger = "middle";
+      });
     } else if (plan === "block") {
       var fast = opp.hands[0];
       if (hypot(opp.hands[1].vx, opp.hands[1].vy) > hypot(fast.vx, fast.vy)) fast = opp.hands[1];
@@ -448,12 +493,12 @@
     spec.y = spec.y || 0;
     G.holds.push(spec);
     if (spec.kind === "thumb") { say("Bear", "Thumb's pinned. Sit in it.", true); sound("buzzIn"); vibe(18); }
-    else if (spec.kind === "grab") { say("Kenai", spec.finger === "middle" ? "Middle finger has the grip." : "That's a grab. Wiggle on green."); sound("flip"); vibe(12); }
+    else if (spec.kind === "encircle") { say("Bear", "That hand is in the ring.", true); sound("flip"); vibe(20); }
     else { say("Bear", spec.finger === "pinky" ? "Pinky has the foot." : "One foot is covered."); sound("bark"); vibe(16); }
   }
 
   function pryHold(h) {
-    say("Kenai", "Index pried it open.", true);
+    say("Kenai", h.kind === "encircle" ? "Index popped the ring." : "Index pried it open.", true);
     sound("right");
     vibe([10, 28, 12]);
     if (h.kind !== "thumb") return null;
@@ -471,13 +516,30 @@
       var by = G.players[h.by];
       var victim = G.players[h.victim];
       var alive = true;
-      if (h.kind === "thumb" || h.kind === "grab") {
+      if (h.kind === "thumb" || h.kind === "encircle") {
         var hand = by.hands[h.hand];
         var other = victim.hands[h.vhand];
         if (!hand || !other || hand.stam <= 0) alive = false;
-        else {
-          var a = tipWorld(hand, h.kind === "thumb" ? "thumb" : (h.finger || "middle"));
-          var b = tipWorld(other, h.kind === "thumb" ? "thumb" : (h.vfinger || "index"));
+        else if (h.kind === "encircle") {
+          var wrap = wrapOf(hand, other);
+          if (!wrap) alive = false;
+          else {
+            h.x = other.x; h.y = other.y; h.finger = wrap.full ? "five" : "wrap";
+            var ringHandE = other;
+            var idxE = tipWorld(other, "index");
+            var wideE = hypot(idxE.x - h.x, idxE.y - h.y) < 0.09;
+            h.ring = (h.ring + dt / 0.9) % 1;
+            var e0 = wideE ? 0.52 : 0.64, e1 = wideE ? 0.86 : 0.78;
+            if (ringHandE.wiggle) {
+              if (h.ring >= e0 && h.ring <= e1) { pryHold(h); return; }
+              ringHandE.stam = Math.max(0, ringHandE.stam - 8);
+              h.ring = 0;
+              vibe(8);
+            }
+          }
+        } else {
+          var a = tipWorld(hand, "thumb");
+          var b = tipWorld(other, "thumb");
           if (hypot(a.x - b.x, a.y - b.y) > 0.07) alive = false;
           h.x = (a.x + b.x) / 2; h.y = (a.y + b.y) / 2;
           var ringHand = other;
@@ -518,8 +580,8 @@
       if (!alive) return;
       h.t += dt;
       h.mult = multOf(h);
-      var base = h.kind === "thumb" ? 3.4 : h.kind === "cover" ? 2.3 : 1.25;
-      by.score += base * h.mult * dt;
+      var base = scoreBase(h);
+      if (base) by.score += base * h.mult * dt;
       G.control = clamp(G.control + (h.by === 0 ? 1 : -1) * dt * 0.18 * Math.min(h.mult, 3), -1, 1);
       if (h.hand != null && by.hands[h.hand]) by.hands[h.hand].stam = Math.max(0, by.hands[h.hand].stam - 4 * dt);
       keep.push(h);
@@ -583,26 +645,13 @@
               x: (tips.thumb.x + et.x) / 2, y: (tips.thumb.y + et.y) / 2
             });
           }
-          if (sp < 0.75) {
-            var bi, bn, bd = 1e9, btip = null, bname = "middle";
-            for (bi = 0; bi < TIP_NAMES.length; bi++) {
-              var nm = TIP_NAMES[bi];
-              if (nm === "thumb") continue;
-              var tp = tips[nm];
-              var their = allTips(e);
-              var ti;
-              for (ti = 0; ti < TIP_NAMES.length; ti++) {
-                var dd = hypot(tp.x - their[TIP_NAMES[ti]].x, tp.y - their[TIP_NAMES[ti]].y);
-                if (dd < bd) { bd = dd; bname = nm; btip = TIP_NAMES[ti]; }
-              }
-            }
-            if (bd < TIP_R) {
-              offer(3, "grab:" + (1 - pi) + ":" + ei, bname === "middle" ? 0.18 : 0.26, {
-                kind: "grab", by: pi, hand: hi, foot: null, finger: bname,
-                victim: 1 - pi, vhand: ei, vfinger: btip, vfoot: null,
-                x: tips[bname].x, y: tips[bname].y
-              });
-            }
+          var wrap = wrapOf(h, e);
+          if (wrap) {
+            var lead = wrap.lead === "middle";
+            offer(4, "encircle:" + (1 - pi) + ":" + ei, lead ? 0.32 : wrap.full ? 0.4 : 0.55, {
+              kind: "encircle", by: pi, hand: hi, foot: null, finger: wrap.full ? "five" : "wrap",
+              victim: 1 - pi, vhand: ei, vfinger: null, vfoot: null, x: e.x, y: e.y
+            });
           }
           if (h.blockT <= 0) {
             var theirTips = allTips(e);
@@ -973,7 +1022,7 @@
       if (!hold || m > hold._m) hold = h, hold._m = m;
     });
     var label = hold
-      ? (hold.kind === "thumb" ? "THUMB" : hold.kind === "cover" ? (hold.finger === "pinky" ? "PINKY FOOT" : "FOOT") : (hold.finger || "GRAB").toUpperCase()) + " x" + (hold._m || 1).toFixed(1)
+      ? (hold.kind === "thumb" ? "THUMB" : hold.kind === "encircle" ? "RING" : hold.kind === "cover" ? (hold.finger === "pinky" ? "PINKY FOOT" : "FOOT") : "HOLD") + " x" + (hold._m || 1).toFixed(1)
       : (G.flashT > 0 ? G.flash : "");
     if (!label) return;
     ctx.save();
@@ -1028,7 +1077,7 @@
   function hotFinger(hand, pi) {
     var key = hand.chargeKey || "";
     if (key.indexOf("thumb") === 0) return "thumb";
-    if (key.indexOf("grab") === 0) return "middle";
+    if (key.indexOf("encircle") === 0) return "middle";
     if (key.indexOf("cover") === 0) return "pinky";
     var hold = null;
     G.holds.forEach(function (h) { if (h.by === pi && h.hand != null && G.players[pi].hands[h.hand] === hand) hold = h; });
@@ -1055,25 +1104,40 @@
     G.holds.forEach(function (h) {
       if (h.kind === "cover") return;
       var x = X(h.x), y = Y(h.y);
-      ctx.strokeStyle = "#1B4F3C";
-      ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.arc(x, y, 22, 0, 7); ctx.stroke();
+      var rad = h.kind === "encircle" ? 36 : 22;
+      ctx.strokeStyle = h.kind === "encircle" ? "#1B4F3C" : "#1B4F3C";
+      ctx.lineWidth = h.kind === "encircle" ? 6 : 3;
+      ctx.beginPath(); ctx.arc(x, y, rad, 0, 7); ctx.stroke();
+      if (h.kind === "encircle") {
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = "#F6C453";
+        ctx.beginPath(); ctx.arc(x, y, rad - 8, 0, 7); ctx.stroke();
+      }
       var a0 = -Math.PI / 2 + h.ring * Math.PI * 2;
       ctx.strokeStyle = "#FFFFFF";
       ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.arc(x, y, 22, a0, a0 + 0.5); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x, y, rad, a0, a0 + 0.5); ctx.stroke();
       ctx.strokeStyle = "#8A5A00";
-      ctx.beginPath(); ctx.arc(x, y, 28, -Math.PI / 2 + 0.64 * 6.28, -Math.PI / 2 + 0.78 * 6.28); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x, y, rad + 6, -Math.PI / 2 + 0.64 * 6.28, -Math.PI / 2 + 0.78 * 6.28); ctx.stroke();
     });
     G.players.forEach(function (p) {
       p.hands.forEach(function (h) {
         if (h.charge > 0.05 && h.need) {
-          var tip = h.chargeKey.indexOf("cover") === 0 ? { x: h.x, y: h.y } : tipWorld(h, h.chargeKey.indexOf("thumb") === 0 ? "thumb" : "middle");
+          var closing = h.chargeKey.indexOf("encircle") === 0 && h.pending;
+          var tip = closing ? h.pending : h.chargeKey.indexOf("cover") === 0 ? { x: h.x, y: h.y } : tipWorld(h, h.chargeKey.indexOf("thumb") === 0 ? "thumb" : "middle");
+          var prog = Math.max(0, Math.min(1, h.charge / h.need));
+          var rad = closing ? 36 : 18;
+          if (closing) {
+            ctx.strokeStyle = "rgba(16,40,28,.28)";
+            ctx.lineWidth = 5;
+            ctx.beginPath(); ctx.arc(X(tip.x), Y(tip.y), rad, 0, 7); ctx.stroke();
+          }
           ctx.strokeStyle = "#1B4F3C";
-          ctx.lineWidth = 4;
+          ctx.lineWidth = closing ? 6 : 4;
           ctx.beginPath();
-          ctx.arc(X(tip.x), Y(tip.y), 18, -Math.PI / 2, -Math.PI / 2 + (h.charge / h.need) * Math.PI * 2);
+          ctx.arc(X(tip.x), Y(tip.y), rad, -Math.PI / 2, -Math.PI / 2 + prog * Math.PI * 2);
           ctx.stroke();
+          if (closing) txt(Math.round(prog * 100) + "%", X(tip.x), Y(tip.y), 14, "#10281C", "center");
         }
       });
     });
@@ -1103,7 +1167,7 @@
     shepherd(view.w / 2 - 34, titleY + (land ? 52 : 68), land ? 28 : 36, "kenai");
     txt("Bear", view.w / 2 + 8, titleY + (land ? 36 : 48), 13, "#10281C", "left");
     txt("Kenai", view.w / 2 + 8, titleY + (land ? 54 : 70), 13, "#10281C", "left");
-    var help = "Two fingers each, one per hand. Thumb pins and the score climbs. Index pries on the green ring. Middle grabs. Ring blocks. Pinky covers a foot faster. Cover both feet and the round is yours.";
+    var help = "Score three ways, each by how long you hold it: their thumb, one whole foot, or a ring closed around a hand. Cover both feet and the round is yours.";
     var hy = land ? 96 : 130;
     wrap(help, 16, hy, view.w - 32, land ? 15 : 16, "#10281C");
     var labels = [
@@ -1125,7 +1189,7 @@
     var by = land ? view.h - 60 : top + labels.length * (bh + 8) + 6;
     button((view.w - Math.min(bw, 200)) / 2, Math.min(by, view.h - 60), Math.min(bw, 200), 48, "Back", endMatch);
     if (!land) {
-      var jobs = [["Thumb", "Pin. Score climbs while you hold."], ["Index", "Pry when the ring is green."], ["Middle", "Grab, and it sticks harder."], ["Ring", "Block a hand that's coming in."], ["Pinky", "Cover a foot sooner."], ["Both feet", "Cover them together. Round won."]];
+      var jobs = [["Thumb", "4 a second, climbs to x4."], ["Index", "Pry a thumb or a ring on green."], ["Middle", "Leads the wrap. Ring shuts faster."], ["Ring", "Block, and it closes a wrap."], ["Pinky", "Whole foot. 3 a second, up to x3."], ["Both feet", "Together, the round is over."]];
       var cardY = Math.min(by, view.h - 60) + 60;
       var cardH = view.h - cardY - 12;
       if (cardH > 150) {
@@ -1302,7 +1366,7 @@
       });
     };
     add();
-    if (typeof loadAsset === "function") loadAsset("mode_thumbjitsu", "assets/modes/thumbjitsu.webp?v=0-6-8");
+    if (typeof loadAsset === "function") loadAsset("mode_thumbjitsu", "assets/modes/thumbjitsu.webp?v=0-6-9");
     window.__thumb = {
       open: openMenu,
       close: closeMatch,
@@ -1353,6 +1417,20 @@
           for (i = 0; i < 40; i++) step(0.02);
           G.freeze = true;
           return snap();
+        },
+        encircle: function () {
+          start("2p", { skip: true, script: true, round: 50 });
+          var A = G.players[0].hands[0];
+          var B = G.players[1].hands[0];
+          A.ang = 0; A.x = 0.5; A.y = 0.58; A.vx = 0; A.vy = 0;
+          A.aiming = true; A.tx = A.x; A.ty = A.y;
+          B.ang = Math.PI; B.x = 0.5; B.y = 0.50; B.vx = 0; B.vy = 0;
+          var i;
+          for (i = 0; i < 45; i++) step(0.02);
+          G.freeze = true;
+          var shot = snap();
+          shot.wrap = wrapOf(A, B);
+          return shot;
         },
         plans: function (mode) {
           start(mode, { skip: true, script: false, round: 30 });
