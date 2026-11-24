@@ -711,17 +711,41 @@ Birthday party:CAKE,CANDLES,BALLOON,PRESENTS|Shepherd breeds:GERMAN,AUSTRALIAN,B
     else {var nh=sW/destA; sy+=(sH-nh)/2; sH=nh;}
     ctx.drawImage(im,sx,sy,sW,sH,x,y,w,h);
   }
-  function dressOn(box,wear,t,fx,fy,fr){
-    if(!wear||!box)return;
-    var hx=box.x+box.w*(fx||0.5), hy=box.y+box.h*(fy||0.4), hr=Math.max(8,box.h*(fr||0.16));
-    var sc=hr/22;
+  var ANCH={
+    marina:{head:[0.50,0.09,0.09],eye:[0.50,0.125,0.10],neck:[0.50,0.25,0.08],back:[0.50,0.36,0.18],glow:[0.50,0.44,0.12]},
+    bear:{head:[0.50,0.16,0.14],eye:[0.50,0.34,0.14],neck:[0.50,0.58,0.12],back:[0.50,0.62,0.24],glow:[0.50,0.50,0.20]},
+    kenai:{head:[0.50,0.30,0.13],eye:[0.50,0.40,0.13],neck:[0.50,0.72,0.12],back:[0.50,0.76,0.22],glow:[0.50,0.55,0.18]}
+  };
+  function atSlot(box,kind,slot,draw){
+    var a=ANCH[kind][slot];
     ctx.save();
-    ctx.translate(hx,hy);
-    ctx.scale(sc,sc);
-    var fit={hy:0,hr:22,eye:6,neck:20,paw:48,back:14,side:32};
-    wearAll(wear,fit,t||0,"back");
-    wearAll(wear,fit,t||0,"front");
+    ctx.translate(box.x+box.w*a[0], box.y+box.h*a[1]);
+    draw(Math.max(8, box.h*a[2]));
     ctx.restore();
+  }
+  function dressBack(box,wear,t,kind){
+    if(!wear||!box||(!wear.back&&wear.fx!=="rainbow"))return;
+    atSlot(box,kind,"back",function(side){
+      var hr=Math.max(8, box.h*ANCH[kind].head[2]);
+      var fit={hy:0,hr:hr,eye:0,neck:hr,paw:hr*2,back:0,side:box.w*ANCH[kind].back[2]};
+      if(wear.back)backOf(wear.back,fit,t||0);
+      if(wear.fx==="rainbow")frontOf("fx","rainbow",fit,t||0);
+    });
+  }
+  function dressFront(box,wear,t,kind){
+    if(!wear||!box)return;
+    if(wear.head)atSlot(box,kind,"head",function(hr){
+      frontOf("head",wear.head,{hy:hr*0.72,hr:hr,eye:0,neck:hr},t||0);
+    });
+    if(wear.face)atSlot(box,kind,"eye",function(hr){
+      frontOf("face",wear.face,{hy:-hr,hr:hr,eye:0,neck:hr*1.3},t||0);
+    });
+    if(wear.neck)atSlot(box,kind,"neck",function(hr){
+      frontOf("neck",wear.neck,{hy:-hr,hr:hr,eye:-hr,neck:0},t||0);
+    });
+    if(wear.fx&&wear.fx!=="rainbow")atSlot(box,kind,"glow",function(hr){
+      frontOf("fx",wear.fx,{hy:0,hr:hr,eye:0,neck:hr,paw:hr*1.8,back:hr*0.3,side:hr*1.2},t||0);
+    });
   }
   var root=typeof window==="undefined"?{}:window;
   root.__closet={
@@ -777,22 +801,30 @@ Birthday party:CAKE,CANDLES,BALLOON,PRESENTS|Shepherd breeds:GERMAN,AUSTRALIAN,B
       var marinaIm=artIm("marina"), bearIm=artIm("bearA"), kenaiIm=artIm("kenaiA");
       ctx.save();ctx.beginPath();ctx.rect(18,150,W-36,prevH-28);ctx.clip();
       if(marinaIm&&bearIm&&kenaiIm){
-        var col=(W-48)/3, top=156, areaH=prevH-52;
-        var mb=containBox(marinaIm,16+col*0+4,top,col-8,areaH);
-        var bearH=Math.min(areaH-8, (areaH-8)/1.12);
-        var kenaiH=bearH*1.12;
-        var foot=top+areaH-2;
-        var bb={x:16+col+ (col-bearH)/2, y:foot-bearH, w:bearH, h:bearH};
-        var kb={x:16+col*2+ (col-kenaiH)/2, y:foot-kenaiH, w:kenaiH, h:kenaiH};
+        var gapC=10, col=(W-32-gapC*2)/3, top=164, areaH=prevH-70;
+        function colX(i){return 16+i*(col+gapC)}
+        var kenaiH=Math.min(areaH, col);
+        var bearH=kenaiH/1.12;
+        var foot=top+areaH;
+        var ms=Math.min(col/marinaIm.naturalWidth, areaH/marinaIm.naturalHeight);
+        var mb={x:colX(0)+(col-marinaIm.naturalWidth*ms)/2, y:top+(areaH-marinaIm.naturalHeight*ms)/2, w:marinaIm.naturalWidth*ms, h:marinaIm.naturalHeight*ms};
+        var bb={x:colX(1)+(col-bearH)/2, y:foot-bearH, w:bearH, h:bearH};
+        var kb={x:colX(2)+(col-kenaiH)/2, y:foot-kenaiH, w:kenaiH, h:kenaiH};
+        ctx.restore();
+        dressBack(mb,data.marina,t,"marina");
+        dressBack(bb,data.pup,t,"bear");
+        dressBack(kb,data.kenai,t,"kenai");
+        ctx.save();ctx.beginPath();ctx.rect(18,150,W-36,prevH-28);ctx.clip();
+        ctx.drawImage(marinaIm,mb.x,mb.y,mb.w,mb.h);
         ctx.drawImage(bearIm,bb.x,bb.y,bb.w,bb.h);
         ctx.drawImage(kenaiIm,kb.x,kb.y,kb.w,kb.h);
-        dressOn(mb,data.marina,t,0.5,0.22,0.11);
-        dressOn(bb,data.pup,t,0.5,0.46,0.2);
-        dressOn(kb,data.kenai,t,0.5,0.48,0.18);
         ctx.restore();
-        api.txt("Marina",16+col*0.5,148+prevH-12,13,who==="marina"?"#10281C":"#2B3550",null,"center",700);
-        api.txt("Bear",16+col*1.5,148+prevH-12,13,who==="pup"?"#10281C":"#2B3550",null,"center",700);
-        api.txt("Kenai",16+col*2.5,148+prevH-12,13,who==="kenai"?"#10281C":"#2B3550",null,"center",700);
+        dressFront(mb,data.marina,t,"marina");
+        dressFront(bb,data.pup,t,"bear");
+        dressFront(kb,data.kenai,t,"kenai");
+        api.txt("Marina",colX(0)+col/2,148+prevH-12,13,who==="marina"?"#10281C":"#2B3550",null,"center",700);
+        api.txt("Bear",colX(1)+col/2,148+prevH-12,13,who==="pup"?"#10281C":"#2B3550",null,"center",700);
+        api.txt("Kenai",colX(2)+col/2,148+prevH-12,13,who==="kenai"?"#10281C":"#2B3550",null,"center",700);
       }else{
         var scP=Math.min(0.98,(prevH-78)/100), scM=scP*0.9, foot=148+prevH-22;
         paintMarina(W*0.30,foot-34*scM,scM,data.marina,t);
@@ -850,18 +882,25 @@ Birthday party:CAKE,CANDLES,BALLOON,PRESENTS|Shepherd breeds:GERMAN,AUSTRALIAN,B
           ctx.fillStyle="#E7F2EB";ctx.fillRect(bx,by,boxW,boxH);
         }
         ctx.restore();
+        var kind=who==="marina"?"marina":who==="kenai"?"kenai":"bear";
+        var slotName=cur==="head"?"head":cur==="face"?"eye":cur==="neck"?"neck":cur==="back"?"back":"glow";
+        var anchor=ANCH[kind][slotName];
         ctx.save();
-        ctx.translate(bx+boxW/2, by+boxH*(who==="marina"?0.42:0.58));
-        ctx.scale(boxH/86, boxH/86);
+        ctx.translate(bx+boxW*(anchor[0]), by+boxH*(anchor[1]));
+        var hr=Math.max(7, boxH*anchor[2]);
         if(cur==="fur"){
           var fz=FURS[it[0]];
-          circ(18,16,9,fz.body);
-        }else if(cur==="back"||cur==="fx"){
-          var mini={hy:-6,hr:16,eye:2,neck:10,paw:22,back:4,side:20};
-          if(cur==="back")backOf(id,mini,t);else frontOf("fx",id,mini,t);
+          circ(hr*0.7,hr*0.4,hr*0.35,fz.body);
+        }else if(cur==="head"){
+          frontOf("head",id,{hy:hr*0.72,hr:hr,eye:0,neck:hr},t);
+        }else if(cur==="face"){
+          frontOf("face",id,{hy:-hr,hr:hr,eye:0,neck:hr},t);
+        }else if(cur==="neck"){
+          frontOf("neck",id,{hy:-hr,hr:hr,eye:-hr,neck:0},t);
+        }else if(cur==="back"){
+          backOf(id,{hy:0,hr:hr,eye:0,neck:hr,paw:hr*2,back:0,side:boxW*anchor[2]},t);
         }else{
-          var mini2={hy:-2,hr:16,eye:4,neck:14,paw:26,back:8,side:18};
-          frontOf(cur,id,mini2,t);
+          frontOf("fx",id,{hy:0,hr:hr,eye:0,neck:hr,paw:hr*1.6,back:hr*0.3,side:hr},t);
         }
         ctx.restore();
         api.txt(it[1],x+cellW/2,y+cellH-14,12,"#2B3550",null,"center",700);

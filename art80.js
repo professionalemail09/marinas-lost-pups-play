@@ -2,7 +2,7 @@
    Loaded after the game so the desk, title, host line, menu, and owner use them. */
 (function () {
   if (typeof window === "undefined") return;
-  var V = "0-6-6";
+  var V = "0-6-7";
   var SRC = {
     bear: "assets/characters/80s/bear-80s.webp?v=" + V,
     kenai: "assets/characters/80s/kenai-80s.webp?v=" + V,
@@ -26,6 +26,35 @@
     if (!ready(im)) return;
     var w = h * (im.naturalWidth / im.naturalHeight);
     ctx.drawImage(im, cx - w / 2, foot - h, w, h);
+  }
+  function seated(im, cx, foot, h) {
+    if (!ready(im)) return;
+    var w = h * (im.naturalWidth / im.naturalHeight);
+    var x = cx - w / 2, y = foot - h, r = Math.min(w, h) * 0.46;
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(x, foot + 6);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, foot + 6);
+    ctx.closePath();
+    ctx.clip();
+    ctx.drawImage(im, x, y - h * 0.04, w, h * 1.08);
+    var side = ctx.createLinearGradient(x, 0, x + w, 0);
+    side.addColorStop(0, "rgba(20,61,46,0.72)");
+    side.addColorStop(0.16, "rgba(20,61,46,0)");
+    side.addColorStop(0.84, "rgba(20,61,46,0)");
+    side.addColorStop(1, "rgba(20,61,46,0.72)");
+    ctx.fillStyle = side;
+    ctx.fillRect(x, y, w, h + 8);
+    var down = ctx.createLinearGradient(0, y + h * 0.62, 0, foot + 6);
+    down.addColorStop(0, "rgba(20,61,46,0)");
+    down.addColorStop(1, "rgba(20,61,46,0.88)");
+    ctx.fillStyle = down;
+    ctx.fillRect(x, y + h * 0.62, w, h * 0.5);
+    ctx.restore();
   }
   function roundPath(x, y, w, h, r) {
     ctx.beginPath();
@@ -54,8 +83,8 @@
       sky.addColorStop(1, "#143D2E");
       ctx.fillStyle = sky;
       ctx.fillRect(x, y, w, h);
-      bust(img.bearA, bx, dy + 2, bearH);
-      bust(img.kenaiA, kx, dy + 2, kenaiH);
+      seated(img.bearA, bx, dy + 6, bearH);
+      seated(img.kenaiA, kx, dy + 6, kenaiH);
       var dg = ctx.createLinearGradient(x, dy - lip, x, y + h);
       dg.addColorStop(0, "#1B4F3C");
       dg.addColorStop(0.45, "#2F6E56");
@@ -222,7 +251,20 @@
     window.drawOwner = wrapped;
   }
 
+  function patchRival() {
+    if (typeof drawRival !== "function" || drawRival.__art80) return;
+    var prev = drawRival;
+    function wrapped(x, y, sc, col, tm, opt) {
+      var quiz = typeof D !== "undefined" && D && D.id === "fetch";
+      if (quiz) return prev.call(this, x, y, sc, "#14151c", tm, opt);
+      return prev.apply(this, arguments);
+    }
+    wrapped.__art80 = true;
+    window.drawRival = wrapped;
+  }
+
   function patch() {
+    patchRival();
     if (window.__mlpStage && !__mlpStage.__art80) {
       patchDesk(__mlpStage);
       patchFront(__mlpStage);
