@@ -2,7 +2,7 @@
    Loaded after the game so the desk, title, host line, menu, and owner use them. */
 (function () {
   if (typeof window === "undefined") return;
-  var V = "0-6-8";
+  var V = "0-6-9";
   var SRC = {
     bear: "assets/characters/80s/bear-80s.webp?v=" + V,
     kenai: "assets/characters/80s/kenai-80s.webp?v=" + V,

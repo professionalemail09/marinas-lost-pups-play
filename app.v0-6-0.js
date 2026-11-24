@@ -758,82 +758,155 @@ Birthday party:CAKE,CANDLES,BALLOON,PRESENTS|Shepherd breeds:GERMAN,AUSTRALIAN,B
     }
     ctx.restore();
   }
-  function portraitChip(box,furId){
-    if(!box||!furId)return;
-    var r=Math.max(5,Math.min(box.w,box.h)*0.065);
-    colorChip(box.x+box.w-r*1.35, box.y+box.h-r*1.35, r, furId);
+  function portraitChip(cx,cy,furId){
+    if(!furId)return;
+    colorChip(cx,cy,6,furId);
   }
-  function gearGeom(box,kind,crop){
-    var a=ANCH[kind].back;
-    var fx=crop?(0.5-crop.x)/crop.w:0.5;
-    var fy=crop?(a[1]-crop.y)/crop.h:a[1];
-    var sx=crop?1/crop.w:1;
-    return {cx:box.x+box.w*fx, y:box.y+box.h*fy, shoulder:box.w*0.34*sx, reach:box.w*0.24*sx, h:box.h, w:box.w};
-  }
-  function drawCape(box,kind,crop){
-    var g=gearGeom(box,kind,crop);
-    var half=g.shoulder+g.reach*1.35;
-    var y=g.y, cx=g.cx, drop=g.h*0.34;
-    ctx.beginPath();
-    ctx.moveTo(cx-half, y+drop);
-    ctx.quadraticCurveTo(cx-half*0.55, y-g.h*0.03, cx, y-g.h*0.02);
-    ctx.quadraticCurveTo(cx+half*0.55, y-g.h*0.03, cx+half, y+drop);
-    ctx.lineTo(cx+g.w*0.16, y+g.h*0.03);
-    ctx.quadraticCurveTo(cx, y+g.h*0.08, cx-g.w*0.16, y+g.h*0.03);
-    ctx.closePath();
-    solid("#E23B4A",2);
-  }
-  function drawShoulder(box,id,t,kind,crop){
-    if(!id||id==="none"||id==="hero")return;
-    var g=gearGeom(box,kind,crop);
-    var y=g.y, cx=g.cx;
+  function inked(fill){
     ctx.save();
-    if(id==="wings"){
-      [-1,1].forEach(function(d){
-        ctx.beginPath();
-        ctx.moveTo(cx+d*g.shoulder*0.55, y+g.h*0.02);
-        ctx.quadraticCurveTo(cx+d*(g.shoulder+g.reach*0.35), y-g.h*0.08, cx+d*(g.shoulder+g.reach), y-g.h*0.02);
-        ctx.quadraticCurveTo(cx+d*(g.shoulder+g.reach*0.45), y+g.h*0.04, cx+d*g.shoulder*0.5, y+g.h*0.06);
-        ctx.closePath();
-        solid(d<0?"#F7F1FF":"#D9C6F0",2);
-      });
-    }else if(id==="jetpack"){
-      [-1,1].forEach(function(d){
-        var tx=cx+d*g.shoulder*1.05-8;
-        pathRound(tx, y-g.h*0.05, 16, Math.max(18,g.h*0.14), 4);
-        solid("#5C6B86",2);
-        ctx.fillStyle="#E2B15A";
-        ctx.fillRect(tx+5, y+g.h*0.08, 6, 6+Math.abs(Math.sin((t||0)*12+d))*6);
-      });
-    }else if(id==="pack"){
-      [-1,1].forEach(function(d){
-        var pw=14, ph=Math.max(16,g.h*0.11);
-        pathRound(cx+d*g.shoulder*1.05-(d<0?pw:0), y-ph*0.15, pw, ph, 4);
-        solid("#C9892D",2);
-      });
-    }
+    ctx.translate(1.2,1.8);
+    ctx.fillStyle="rgba(16,40,28,0.5)";
+    ctx.fill();
     ctx.restore();
+    ctx.fillStyle=fill;
+    ctx.fill();
+    ctx.lineWidth=2;
+    ctx.strokeStyle="#10281C";
+    ctx.lineJoin="round";
+    ctx.stroke();
   }
-  function drawBack(box,wear,t,kind,crop){
-    if(!wear||!box||!ANCH[kind])return;
-    if(wear.back==="hero")drawCape(box,kind,crop);
-    if(wear.fx==="rainbow"){
-      var g=gearGeom(box,kind,crop);
-      ctx.save();
-      ctx.translate(g.cx, g.y);
+  function shoulderY(box,kind){
+    var a=ANCH[kind]&&ANCH[kind].back;
+    return box.y+box.h*(a?a[1]:0.55);
+  }
+  function wingPath(rootX,tipX,y){
+    var len=tipX-rootX, lift=Math.max(16,Math.abs(len)*0.95);
+    ctx.beginPath();
+    ctx.moveTo(rootX,y);
+    ctx.quadraticCurveTo(rootX+len*0.25,y-lift,rootX+len*0.95,y-lift*0.35);
+    ctx.quadraticCurveTo(rootX+len*0.8,y-lift*0.02,rootX+len*0.45,y+lift*0.22);
+    ctx.quadraticCurveTo(rootX+len*0.18,y+lift*0.08,rootX,y+5);
+    ctx.closePath();
+  }
+  function drawWing(rootX,tipX,y){
+    wingPath(rootX,tipX,y);
+    inked("#F4ECFF");
+    wingPath(rootX+(tipX-rootX)*0.18, rootX+(tipX-rootX)*0.72, y+1);
+    ctx.fillStyle="#D9C6F0";
+    ctx.fill();
+    ctx.strokeStyle="#10281C";
+    ctx.lineWidth=1.5;
+    ctx.stroke();
+  }
+  function sideSpan(box,frame,dir){
+    var loose=frame&&(frame.x<box.x-4||frame.x+frame.w>box.x+box.w+4);
+    if(loose){
+      var edge=dir<0?frame.x+4:frame.x+frame.w-4;
+      var root=dir<0?box.x+box.w*0.16:box.x+box.w*0.84;
+      return {root:root, tip:edge};
+    }
+    var mid=box.x+box.w/2;
+    var reach=Math.max(14,box.w*0.2);
+    return {root:mid+dir*box.w*0.2, tip:mid+dir*Math.min(box.w*0.46, box.w*0.2+reach)};
+  }
+  function withRaw(draw){
+    var mlp=window.MLP;
+    if(mlp)mlp.raw=(mlp.raw|0)+1;
+    try{draw()}finally{if(mlp)mlp.raw--}
+  }
+  function drawPortraitBack(box,id,t,kind,frame){
+    if(!id||id==="none"||!box)return;
+    withRaw(function(){drawPortraitBackRaw(box,id,t,kind,frame)});
+  }
+  function drawPortraitBackRaw(box,id,t,kind,frame){
+    var y=shoulderY(box,kind);
+    [-1,1].forEach(function(d){
+      var s=sideSpan(box,frame,d);
+      if(id==="wings")drawWing(s.root,s.tip,y);
+      else if(id==="hero"){
+        var drop=Math.max(20, box.h*0.26);
+        ctx.beginPath();
+        ctx.moveTo(s.root,y-2);
+        ctx.quadraticCurveTo((s.root+s.tip)/2,y-6,s.tip,y+4);
+        ctx.lineTo(s.tip,y+drop);
+        ctx.quadraticCurveTo((s.root+s.tip)/2,y+drop+6,s.root,y+drop*0.72);
+        ctx.closePath();
+        inked("#E23B4A");
+      }      else if(id==="jetpack"||id==="pack"){
+        var span=Math.abs(s.tip-s.root);
+        var w=Math.max(12,Math.min(18,span*0.78));
+        var h=Math.max(16,box.h*(id==="jetpack"?0.18:0.15));
+        var left=Math.min(s.root,s.tip), right=Math.max(s.root,s.tip);
+        var x=d<0?left:right-w;
+        pathRound(x, y-h*0.2, w, h, 4);
+        inked(id==="jetpack"?"#2C3A4F":"#C9892D");
+        if(id==="jetpack"){
+          ctx.fillStyle="#E2B15A";
+          ctx.fillRect(x+w*0.28, y+h*0.55, w*0.4, 5+Math.abs(Math.sin((t||0)*10+d))*4);
+        }else{
+          ctx.fillStyle="#FBF7F1";
+          pathRound(x+w*0.22, y-h*0.05, w*0.52, h*0.28, 2);
+          ctx.fill();
+        }
+      }
+    });
+  }
+  function drawHalo(box,id,t){
+    if(!id||id==="none"||!box)return;
+    withRaw(function(){drawHaloRaw(box,id,t)});
+  }
+  function drawHaloRaw(box,id,t){
+    var cx=box.x+box.w/2, cy=box.y+box.h/2;
+    var rx=box.w*0.42, ry=box.h*0.44;
+    var n=id==="rainbow"?5:8;
+    ctx.save();
+    if(id==="rainbow"){
       for(var i=0;i<3;i++){
         ctx.beginPath();
-        ctx.strokeStyle=["#E23B4A","#E2B15A","#6B8F71"][i];
+        ctx.lineWidth=5;
+        ctx.strokeStyle="#10281C";
+        ctx.arc(cx, cy+box.h*0.08, Math.min(rx,ry)*(0.55+i*0.14), Math.PI*1.15, Math.PI*1.85);
+        ctx.stroke();
+        ctx.beginPath();
         ctx.lineWidth=3;
-        ctx.arc(0, g.h*0.04, g.shoulder*(0.7+i*0.16), Math.PI*1.15, Math.PI*1.85);
+        ctx.strokeStyle=["#E23B4A","#E2B15A","#3E8F62"][i];
+        ctx.arc(cx, cy+box.h*0.08, Math.min(rx,ry)*(0.55+i*0.14), Math.PI*1.15, Math.PI*1.85);
         ctx.stroke();
       }
       ctx.restore();
+      return;
     }
+    for(var k=0;k<n;k++){
+      var ang=(t||0)*0.7+k*(Math.PI*2/n);
+      var px=Math.max(box.x+8, Math.min(box.x+box.w-8, cx+Math.cos(ang)*rx));
+      var py=Math.max(box.y+8, Math.min(box.y+box.h-8, cy+Math.sin(ang)*ry));
+      if(id==="sparkle")star(px,py,5.5,k%2?GOLD:"#FFF8E8");
+      else if(id==="hearts")heart(px,py,5,k%2?CORAL:PINK);
+      else if(id==="snow")circ(px,py,4.2,"#F7FBFF");
+      else if(id==="confetti"){
+        ctx.save();ctx.translate(px,py);ctx.rotate(ang);
+        ctx.fillStyle=["#E23B4A","#E2B15A","#3E8F62","#6B8FBF","#E7A0C4"][k%5];
+        ctx.fillRect(-3,-4,6,8);
+        ctx.strokeStyle="#10281C";ctx.lineWidth=1.4;ctx.strokeRect(-3,-4,6,8);
+        ctx.restore();
+      }else if(id==="firepaws"){
+        ctx.beginPath();
+        ctx.moveTo(px,py+4);
+        ctx.quadraticCurveTo(px-5,py-2,px,py-7);
+        ctx.quadraticCurveTo(px+5,py-2,px,py+4);
+        ctx.closePath();
+        inked(k%2?"#E2B15A":"#E23B4A");
+      }
+    }
+    ctx.restore();
   }
-  function drawGear(box,wear,t,kind,crop){
-    if(!wear||!wear.back||wear.back==="hero")return;
-    drawShoulder(box,wear.back,t,kind,crop);
+  function drawBack(box,wear,t,kind,frame){
+    if(!wear||!box)return;
+    if(wear.back)drawPortraitBack(box,wear.back,t,kind,frame);
+  }
+  function drawGear(box,wear,t,kind){
+    if(!wear||!wear.back||!box)return;
+    drawPortraitBack(box,wear.back,t,kind);
   }
   function drawFront(box,wear,t,kind){
     if(!wear||!box||!ANCH[kind])return;
@@ -850,13 +923,7 @@ Birthday party:CAKE,CANDLES,BALLOON,PRESENTS|Shepherd breeds:GERMAN,AUSTRALIAN,B
     if(wear.neck)paintAt(box,a.neck[0],a.neck[1],a.neck[2],function(hr){
       frontOf("neck",wear.neck,{hy:-hr,hr:hr,eye:-hr,neck:0},t||0);
     });
-    if(wear.fx&&wear.fx!=="rainbow"){
-      var paw=unitOff(box,a.glow[1],a.paw[1],a.glow[2]);
-      var back=unitOff(box,a.glow[1],a.back[1],a.glow[2]);
-      paintAt(box,a.glow[0],a.glow[1],a.glow[2],function(hr){
-        frontOf("fx",wear.fx,{hy:0,hr:hr,eye:0,neck:hr,paw:paw,back:back,side:hr*1.6},t||0);
-      });
-    }
+    if(wear.fx)drawHalo(box,wear.fx,t||0);
   }
   var root=typeof window==="undefined"?{}:window;
   root.__closet={
@@ -917,44 +984,43 @@ Birthday party:CAKE,CANDLES,BALLOON,PRESENTS|Shepherd breeds:GERMAN,AUSTRALIAN,B
         var on=who===tab[0], x=16+i*(bw+gap);
         api.button(x,96,bw,44,tab[1],function(){data.who=tab[0];api.sfx("click")},{c1:on?"#1B4F3C":"#F2F6F0",c2:on?"#145C40":"#E7F2EB",st:on?"#0E3326":"#2B3550",size:15});
       });
-      var prevH=H<520?168:220;
+      var gapC=8, frameW=(W-32-gapC*2)/3;
+      var frameH=Math.round(Math.min(frameW*1.28, H<520?132:156));
+      var top=156, nameY=top+frameH+14, chipY=nameY+13;
+      var prevH=chipY+12-148;
       api.rr(16,148,W-32,prevH,18);
       ctx.fillStyle="#E7F2EB";ctx.fill();
       ctx.strokeStyle="#1B4F3C";ctx.lineWidth=2;ctx.stroke();
       var marinaIm=artIm("marina"), bearIm=artIm("bearA"), kenaiIm=artIm("kenaiA");
-      ctx.save();ctx.beginPath();ctx.rect(18,150,W-36,prevH-28);ctx.clip();
       if(marinaIm&&bearIm&&kenaiIm){
-        var gapC=10, col=(W-32-gapC*2)/3, top=164, areaH=prevH-70;
-        function colX(i){return 16+i*(col+gapC)}
-        var kenaiH=Math.min(areaH, col);
-        var bearH=kenaiH/1.12;
-        var foot=top+areaH;
-        var ms=Math.min(col/marinaIm.naturalWidth, areaH/marinaIm.naturalHeight);
-        var mb={x:colX(0)+(col-marinaIm.naturalWidth*ms)/2, y:top+(areaH-marinaIm.naturalHeight*ms)/2, w:marinaIm.naturalWidth*ms, h:marinaIm.naturalHeight*ms};
-        var bb={x:colX(1)+(col-bearH)/2, y:foot-bearH, w:bearH, h:bearH};
-        var kb={x:colX(2)+(col-kenaiH)/2, y:foot-kenaiH, w:kenaiH, h:kenaiH};
-        ctx.restore();
-        drawBack(mb,data.marina,t,"marina");
-        drawBack(bb,data.pup,t,"bear");
-        drawBack(kb,data.kenai,t,"kenai");
-        ctx.save();ctx.beginPath();ctx.rect(18,150,W-36,prevH-28);ctx.clip();
-        ctx.drawImage(marinaIm,mb.x,mb.y,mb.w,mb.h);
-        ctx.drawImage(bearIm,bb.x,bb.y,bb.w,bb.h);
-        ctx.drawImage(kenaiIm,kb.x,kb.y,kb.w,kb.h);
-        ctx.restore();
-        drawGear(mb,data.marina,t,"marina");
-        drawGear(bb,data.pup,t,"bear");
-        drawGear(kb,data.kenai,t,"kenai");
-        drawFront(mb,data.marina,t,"marina");
-        drawFront(bb,data.pup,t,"bear");
-        drawFront(kb,data.kenai,t,"kenai");
-        portraitChip(mb,data.marina.fur);
-        portraitChip(bb,data.pup.fur);
-        portraitChip(kb,data.kenai.fur);
-        api.txt("Marina",colX(0)+col/2,148+prevH-12,13,who==="marina"?"#10281C":"#2B3550",null,"center",700);
-        api.txt("Bear",colX(1)+col/2,148+prevH-12,13,who==="pup"?"#10281C":"#2B3550",null,"center",700);
-        api.txt("Kenai",colX(2)+col/2,148+prevH-12,13,who==="kenai"?"#10281C":"#2B3550",null,"center",700);
+        function frameAt(i){return {x:16+i*(frameW+gapC), y:top, w:frameW, h:frameH};}
+        var fm=frameAt(0), fb=frameAt(1), fk=frameAt(2);
+        var gutter=18;
+        var kenaiDraw=Math.min(frameW-gutter*2, frameH-10);
+        var bearDraw=kenaiDraw/1.12;
+        function fitDog(fr,size){return {x:fr.x+(fr.w-size)/2, y:fr.y+fr.h-size-4, w:size, h:size};}
+        var bb=fitDog(fb,bearDraw), kb=fitDog(fk,kenaiDraw);
+        var ms=Math.min((fm.w-gutter*2)/marinaIm.naturalWidth, (fm.h-8)/marinaIm.naturalHeight);
+        var mb={x:fm.x+(fm.w-marinaIm.naturalWidth*ms)/2, y:fm.y+(fm.h-marinaIm.naturalHeight*ms)/2, w:marinaIm.naturalWidth*ms, h:marinaIm.naturalHeight*ms};
+        function show(fr,box,im,wear,kind){
+          ctx.save();
+          ctx.beginPath();ctx.rect(fr.x,fr.y,fr.w,fr.h);ctx.clip();
+          ctx.drawImage(im,box.x,box.y,box.w,box.h);
+          drawBack(box,wear,t,kind,fr);
+          drawFront(box,wear,t,kind);
+          ctx.restore();
+        }
+        show(fm,mb,marinaIm,data.marina,"marina");
+        show(fb,bb,bearIm,data.pup,"bear");
+        show(fk,kb,kenaiIm,data.kenai,"kenai");
+        api.txt("Marina",fm.x+fm.w/2,nameY,13,who==="marina"?"#10281C":"#2B3550",null,"center",700);
+        api.txt("Bear",fb.x+fb.w/2,nameY,13,who==="pup"?"#10281C":"#2B3550",null,"center",700);
+        api.txt("Kenai",fk.x+fk.w/2,nameY,13,who==="kenai"?"#10281C":"#2B3550",null,"center",700);
+        portraitChip(fm.x+fm.w/2,chipY,data.marina.fur);
+        portraitChip(fb.x+fb.w/2,chipY,data.pup.fur);
+        portraitChip(fk.x+fk.w/2,chipY,data.kenai.fur);
       }else{
+        ctx.save();
         var scP=Math.min(0.98,(prevH-78)/100), scM=scP*0.9, foot=148+prevH-22;
         paintMarina(W*0.30,foot-34*scM,scM,data.marina,t);
         paintPup(W*0.72,foot-40*scP,scP,data.pup,t);
@@ -1002,13 +1068,14 @@ Birthday party:CAKE,CANDLES,BALLOON,PRESENTS|Shepherd breeds:GERMAN,AUSTRALIAN,B
         var face=who==="marina"?artIm("marina"):who==="kenai"?artIm("kenaiA"):artIm("bearA");
         var kind=who==="marina"?"marina":who==="kenai"?"kenai":"bear";
         var tile={x:bx,y:by,w:boxW,h:boxH};
-        if(cur==="back"&&id==="hero")drawCape(tile,kind,face?cropRect(face,boxW,boxH,kind):null);
         ctx.save();
         ctx.beginPath();
         if(ctx.roundRect)ctx.roundRect(bx,by,boxW,boxH,12);else ctx.rect(bx,by,boxW,boxH);
         ctx.clip();
         if(face)coverCrop(face,bx,by,boxW,boxH,kind);
         else {ctx.fillStyle="#E7F2EB";ctx.fillRect(bx,by,boxW,boxH);}
+        if(cur==="back"&&id)drawPortraitBack(tile,id,t,kind);
+        if((cur==="fx"||cur==="glow")&&id)drawHalo(tile,id,t);
         ctx.restore();
         if(cur==="fur"){
           colorChip(bx+boxW/2, by+boxH*0.72, Math.min(boxW,boxH)*0.16, it[0]);
@@ -1022,14 +1089,6 @@ Birthday party:CAKE,CANDLES,BALLOON,PRESENTS|Shepherd breeds:GERMAN,AUSTRALIAN,B
           }
           else if(cur==="face")paintAt(tile,mp[0],mp[1],mp[2],function(hr){frontOf("face",id,{hy:-hr,hr:hr,eye:0,neck:hr*1.3},t);});
           else if(cur==="neck")paintAt(tile,mp[0],mp[1],mp[2],function(hr){frontOf("neck",id,{hy:-hr,hr:hr,eye:-hr,neck:0},t);});
-          else if(cur==="back"&&id!=="hero")drawShoulder(tile,id,t,kind,cropRect(face,boxW,boxH,kind));
-          else {
-            var crop=cropRect(face,boxW,boxH,kind);
-            var glow=mapped(kind,"glow",crop), pawA=mapped(kind,"paw",crop), backA=mapped(kind,"back",crop);
-            var paw=unitOff(tile,glow[1],pawA[1],glow[2]);
-            var back=unitOff(tile,glow[1],backA[1],glow[2]);
-            paintAt(tile,glow[0],glow[1],glow[2],function(hr){frontOf("fx",id,{hy:0,hr:hr,eye:0,neck:hr,paw:paw,back:back,side:hr*1.6},t);});
-          }
         }
         api.txt(it[1],x+cellW/2,y+cellH-14,12,"#2B3550",null,"center",700);
         api.hit(x,Math.max(y,gridTop),cellW,Math.min(cellH,gridTop+viewH-Math.max(y,gridTop)),function(){
