@@ -710,55 +710,42 @@ Birthday party:CAKE,CANDLES,BALLOON,PRESENTS|Shepherd breeds:GERMAN,AUSTRALIAN,B
     kenai:{head:[0.50,0.30,0.14],eye:[0.50,0.40,0.16],neck:[0.50,0.80,0.12],back:[0.50,0.84,0.16],glow:[0.50,0.86,0.14],paw:[0.50,0.94,0.12]}
   };
   var CROP={marina:{top:0.02,span:0.46},bear:{top:0,span:0.86},kenai:{top:0,span:0.86},marinaA:{top:0,span:0.86}};
-  // Measured on the source art. x,y are fractions of that image.
-  // scale is the feature width as a fraction of image width.
-  // rot is the eye-line angle in radians (canvas y grows downward).
+  // One landmark set per portrait, measured on that image.
+  // head: top of the skull or hood, between the ears. w is that width.
+  // eye: center of the eye line. w is the eye spacing. rot is the tilt (y down).
+  // neck: collar line. w is the neck width.
+  // back: midpoint of the shoulders. w is the shoulder span.
   var LAND={
     bear:{
-      skull:{x:132/256,y:40/256},
-      head:{x:132/256,y:40/256,scale:96/256,rot:0},
-      eyeL:{x:105/256,y:88/256},
-      eyeR:{x:175/256,y:88/256},
-      eye:{x:140/256,y:88/256,scale:70/256,rot:0},
-      neck:{x:132/256,y:154/256,scale:76/256,rot:0},
-      shL:{x:56/256,y:176/256},
-      shR:{x:200/256,y:176/256}
+      head:{x:132/256,y:40/256,w:96/256,rot:0},
+      eye:{x:140/256,y:88/256,w:70/256,rot:0},
+      neck:{x:132/256,y:154/256,w:76/256,rot:0},
+      back:{x:128/256,y:176/256,w:144/256}
     },
     kenai:{
-      skull:{x:124/256,y:72/256},
-      head:{x:124/256,y:72/256,scale:96/256,rot:Math.atan2(119-113,150-100)},
-      eyeL:{x:100/256,y:113/256},
-      eyeR:{x:150/256,y:119/256},
-      eye:{x:125/256,y:116/256,scale:50.4/256,rot:Math.atan2(119-113,150-100)},
-      neck:{x:124/256,y:192/256,scale:78/256,rot:Math.atan2(119-113,150-100)},
-      shL:{x:88/256,y:200/256},
-      shR:{x:188/256,y:206/256}
+      head:{x:124/256,y:72/256,w:96/256,rot:Math.atan2(6,50)},
+      eye:{x:125/256,y:116/256,w:50.4/256,rot:Math.atan2(6,50)},
+      neck:{x:124/256,y:192/256,w:78/256,rot:Math.atan2(6,50)},
+      back:{x:138/256,y:203/256,w:100/256}
     },
     marina:{
-      skull:{x:286/576,y:54/768},
-      head:{x:286/576,y:54/768,scale:130/576,rot:Math.atan2(107-106,320-255)},
-      eyeL:{x:255/576,y:106/768},
-      eyeR:{x:320/576,y:107/768},
-      eye:{x:287.5/576,y:106.5/768,scale:65/576,rot:Math.atan2(107-106,320-255)},
-      neck:{x:286/576,y:192/768,scale:96/576,rot:Math.atan2(107-106,320-255)},
-      shL:{x:160/576,y:208/768},
-      shR:{x:416/576,y:208/768}
+      head:{x:286/576,y:22/768,w:120/576,rot:Math.atan2(1,65)},
+      eye:{x:287.5/576,y:106.5/768,w:65/576,rot:Math.atan2(1,65)},
+      neck:{x:286/576,y:192/768,w:96/576,rot:Math.atan2(1,65)},
+      back:{x:288/576,y:208/768,w:256/576}
     },
     marinaA:{
-      skull:{x:130/256,y:34/256},
-      head:{x:130/256,y:34/256,scale:92/256,rot:0},
-      eyeL:{x:105/256,y:62/256},
-      eyeR:{x:155/256,y:62/256},
-      eye:{x:130/256,y:62/256,scale:50/256,rot:0},
-      neck:{x:130/256,y:128/256,scale:72/256,rot:0},
-      shL:{x:52/256,y:140/256},
-      shR:{x:204/256,y:140/256}
+      head:{x:130/256,y:12/256,w:88/256,rot:0},
+      eye:{x:130/256,y:62/256,w:50/256,rot:0},
+      neck:{x:130/256,y:128/256,w:72/256,rot:0},
+      back:{x:128/256,y:140/256,w:152/256}
     }
   };
-  // Contact line of each hat, in units of hr above the drawing origin.
-  var HAT_SIT={crown:0.57,wizard:0.55,tricorn:0.72,helmet:1.06,cowboy:0.70,chef:0.57,viking:0.60,party:0.55,beanie:0.45,flower:0.63};
-  // Width of the part that sits on the skull, in units of hr.
+  // hy, in units of hr, that puts the brim's bottom edge on the head-top landmark.
+  var HAT_SIT={crown:0.57,wizard:0.55,tricorn:0.44,helmet:0.80,cowboy:0.48,chef:0.57,viking:0.60,party:0.55,beanie:0.45,flower:0.63};
+  // Width of the brim, in units of hr. Highest point above that brim, in units of hr.
   var HAT_W={crown:1.7,wizard:1.9,tricorn:2.3,helmet:2.24,cowboy:2.4,chef:1.8,viking:1.6,party:1.4,beanie:1.8,flower:1.8};
+  var HAT_RISE={crown:1.05,wizard:1.55,tricorn:0.95,helmet:1.20,cowboy:1.02,chef:1.18,viking:0.95,party:1.58,beanie:1.28,flower:0.70};
   // Distance from the glasses origin to each lens center, in units of hr.
   var LENS={aviators:0.45,stars:0.38,hearts:0.38,goggles:0.525,monocle:0.38};
   var NECK_W={bandana:1.4,spikes:1.5,bowtie:1.1,chain:1.4,scarf:1.6,neckcape:1.7};
@@ -767,9 +754,52 @@ Birthday party:CAKE,CANDLES,BALLOON,PRESENTS|Shepherd breeds:GERMAN,AUSTRALIAN,B
   function cropSpec(kind){
     var L=LAND[kind];
     if(!L)return CROP[kind]||CROP.bear;
-    var top=Math.max(0, Math.min(L.skull.y, L.eyeL.y, L.eyeR.y)-0.10);
-    var bot=Math.min(1, Math.max(L.neck.y, L.shL.y, L.shR.y)+0.08);
+    var top=Math.max(0, Math.min(L.head.y, L.eye.y)-0.08);
+    var bot=Math.min(1, Math.max(L.neck.y, L.back.y)+0.08);
     return {top:top, span:Math.max(0.36, bot-top)};
+  }
+  function hatRisePx(id, headW){
+    var rise=HAT_RISE[id]||1, coef=HAT_W[id]||1.8;
+    return headW*rise/coef+3;
+  }
+  function layoutTile(im, tile, kind, slot, id){
+    var L=LAND[kind];
+    var focus=slot==="face"?L.eye:slot==="neck"?L.neck:slot==="back"?L.back:L.head;
+    var headSrc=L.head.w*im.naturalWidth;
+    var above=0.35, below=1.05;
+    if(slot==="head"){
+      above=0.2; below=1.15;
+    }else if(slot==="face"){
+      above=0.45; below=0.55;
+    }else if(slot==="neck"){
+      above=0.4; below=0.95;
+    }else if(slot==="back"){
+      above=0.55; below=0.5;
+    }else if(slot==="fx"){
+      above=0.85; below=1.15;
+    }
+    var maxHead=tile.w*0.56;
+    if(slot==="back"){
+      var span=L.back.w+1.8*L.head.w;
+      maxHead=Math.min(maxHead, tile.w*0.9*(L.head.w/span));
+    }
+    var maxHeadH=tile.h/(above+below);
+    var headW=Math.min(maxHead, maxHeadH);
+    if(slot==="head"&&id){
+      var coef=HAT_W[id]||1.8, rise=HAT_RISE[id]||1;
+      var unit=rise/coef+below;
+      headW=Math.min(headW, (tile.h-8)/unit);
+      above=(headW*rise/coef+4)/Math.max(8, headW);
+    }
+    headW=Math.max(8, headW);
+    var scale=headW/headSrc;
+    var box={
+      x:tile.x+tile.w/2-focus.x*im.naturalWidth*scale,
+      y:tile.y+above*headW+2-focus.y*im.naturalHeight*scale,
+      w:im.naturalWidth*scale,
+      h:im.naturalHeight*scale
+    };
+    return box;
   }
   function mapPt(p,box,src){
     src=src||{x:0,y:0,w:1,h:1};
@@ -785,8 +815,8 @@ Birthday party:CAKE,CANDLES,BALLOON,PRESENTS|Shepherd breeds:GERMAN,AUSTRALIAN,B
     src=src||{x:0,y:0,w:1,h:1};
     withRaw(function(){
       if(wear.head){
-        var p=mapPt(L.skull,box,src);
-        var hr=Math.max(6, mapScale(L.head.scale,box,src)/(HAT_W[wear.head]||1.8));
+        var p=mapPt(L.head,box,src);
+        var hr=Math.max(6, mapScale(L.head.w,box,src)/(HAT_W[wear.head]||1.8));
         ctx.save();
         ctx.translate(p.x,p.y);
         ctx.rotate(L.head.rot||0);
@@ -795,7 +825,7 @@ Birthday party:CAKE,CANDLES,BALLOON,PRESENTS|Shepherd breeds:GERMAN,AUSTRALIAN,B
       }
       if(wear.face){
         var mid=mapPt(L.eye,box,src);
-        var spacing=mapScale(L.eye.scale,box,src);
+        var spacing=mapScale(L.eye.w,box,src);
         var hr=Math.max(6, (spacing/2)/(LENS[wear.face]||0.4));
         ctx.save();
         ctx.translate(mid.x,mid.y);
@@ -805,7 +835,7 @@ Birthday party:CAKE,CANDLES,BALLOON,PRESENTS|Shepherd breeds:GERMAN,AUSTRALIAN,B
       }
       if(wear.neck){
         var n=mapPt(L.neck,box,src);
-        var hr=Math.max(6, mapScale(L.neck.scale,box,src)/(NECK_W[wear.neck]||1.4));
+        var hr=Math.max(6, mapScale(L.neck.w,box,src)/(NECK_W[wear.neck]||1.4));
         ctx.save();
         ctx.translate(n.x,n.y);
         ctx.rotate(L.neck.rot||0);
@@ -921,52 +951,56 @@ Birthday party:CAKE,CANDLES,BALLOON,PRESENTS|Shepherd breeds:GERMAN,AUSTRALIAN,B
     if(!id||id==="none"||!box)return;
     withRaw(function(){drawPortraitBackRaw(box,id,t,kind,frame,src)});
   }
-  function shoulderPair(box,kind,frame,src){
-    var L=LAND[kind];
-    var f=frame||box;
-    if(!L){
-      var y=shoulderY(box,kind);
-      return {l:{x:sideSpan(box,frame,-1).root,y:y}, r:{x:sideSpan(box,frame,1).root,y:y}, f:f};
-    }
-    return {l:mapPt(L.shL,box,src), r:mapPt(L.shR,box,src), f:f};
+  function clampX(x, frame, pad){
+    if(!frame)return x;
+    return Math.max(frame.x+pad, Math.min(frame.x+frame.w-pad, x));
   }
   function drawPortraitBackRaw(box,id,t,kind,frame,src){
+    var L=LAND[kind];
+    if(!L)return;
     src=src||{x:0,y:0,w:1,h:1};
-    var pair=shoulderPair(box,kind,frame,src);
-    var sl=pair.l, sr=pair.r, f=pair.f;
+    var f=frame||box;
+    var headW=mapScale(L.head.w, box, src);
+    var back=mapPt(L.back, box, src);
+    var half=mapScale(L.back.w, box, src)/2;
+    var sl={x:back.x-half, y:back.y};
+    var sr={x:back.x+half, y:back.y};
+    var reach=Math.max(8, headW*0.85);
     if(id==="wings"){
-      drawWing(sl.x, f.x+4, sl.y);
-      drawWing(sr.x, f.x+f.w-4, sr.y);
+      drawWing(sl.x, clampX(sl.x-reach, f, 3), sl.y);
+      drawWing(sr.x, clampX(sr.x+reach, f, 3), sr.y);
       return;
     }
     if(id==="hero"){
-      [[sl, f.x+4],[sr, f.x+f.w-4]].forEach(function(side){
-        var root=side[0], tip=side[1];
-        var room=f.y+f.h-root.y-6;
-        var drop=Math.max(16, Math.min(room, box.h*0.28));
+      var capeW=Math.max(7, headW*0.4);
+      var drop=Math.max(10, headW*0.65);
+      [sl, sr].forEach(function(root, i){
+        var dir=i?1:-1;
+        var outer=clampX(root.x+dir*capeW, f, 3);
+        var y2=Math.min(f.y+f.h-3, root.y+drop);
         ctx.beginPath();
         ctx.moveTo(root.x, root.y);
-        ctx.quadraticCurveTo((root.x+tip)/2, root.y-4, tip, root.y+8);
-        ctx.lineTo(tip, root.y+drop);
-        ctx.quadraticCurveTo((root.x+tip)/2, root.y+drop+4, root.x, root.y+drop*0.42);
+        ctx.quadraticCurveTo((root.x+outer)/2, root.y-3, outer, root.y+3);
+        ctx.lineTo(outer, y2);
+        ctx.quadraticCurveTo((root.x+outer)/2, y2+3, root.x, root.y+drop*0.32);
         ctx.closePath();
         inked("#E23B4A");
       });
       return;
     }
     if(id==="jetpack"||id==="pack"){
-      [[sl,-1],[sr,1]].forEach(function(side){
-        var root=side[0], d=side[1];
-        var w=Math.max(11, Math.min(18, box.w*0.14));
-        var h=Math.max(14, box.h*(id==="jetpack"?0.18:0.14));
-        var x=d<0?root.x-w*0.72:root.x-w*0.28;
-        x=Math.max(f.x+3, Math.min(f.x+f.w-w-3, x));
-        var y=Math.max(f.y+3, Math.min(f.y+f.h-h-3, root.y-h*0.35));
-        pathRound(x, y, w, h, 4);
+      var w=Math.max(8, headW*0.26);
+      var h=Math.max(10, headW*(id==="jetpack"?0.4:0.32));
+      [sl, sr].forEach(function(root, i){
+        var dir=i?1:-1;
+        var x=root.x+(dir<0?-w*0.85:-w*0.15);
+        x=Math.max(f.x+2, Math.min(f.x+f.w-w-2, x));
+        var y=Math.max(f.y+2, Math.min(f.y+f.h-h-2, root.y-h*0.15));
+        pathRound(x, y, w, h, 3);
         inked(id==="jetpack"?"#2C3A4F":"#C9892D");
         if(id==="jetpack"){
           ctx.fillStyle="#E2B15A";
-          ctx.fillRect(x+w*0.28, y+h*0.62, w*0.42, 4+Math.abs(Math.sin((t||0)*10+d))*3);
+          ctx.fillRect(x+w*0.28, y+h*0.62, w*0.42, 3+Math.abs(Math.sin((t||0)*10+dir))*3);
         }else{
           ctx.fillStyle="#FBF7F1";
           pathRound(x+w*0.22, y+h*0.12, w*0.52, h*0.26, 2);
@@ -1184,18 +1218,20 @@ Birthday party:CAKE,CANDLES,BALLOON,PRESENTS|Shepherd breeds:GERMAN,AUSTRALIAN,B
         ctx.beginPath();
         if(ctx.roundRect)ctx.roundRect(bx,by,boxW,boxH,12);else ctx.rect(bx,by,boxW,boxH);
         ctx.clip();
-        if(face)coverCrop(face,bx,by,boxW,boxH,kind);
-        else {ctx.fillStyle="#E7F2EB";ctx.fillRect(bx,by,boxW,boxH);}
-        var tileSrc=face?cropRect(face,boxW,boxH,kind):null;
-        if(cur==="back"&&id)drawPortraitBack(tile,id,t,kind,tile,tileSrc);
+        ctx.fillStyle="#E7F2EB";
+        ctx.fillRect(bx,by,boxW,boxH);
+        var placed=face?layoutTile(face, tile, kind, cur==="glow"?"fx":cur, id):null;
+        if(face&&placed)ctx.drawImage(face, placed.x, placed.y, placed.w, placed.h);
+        if(cur==="back"&&id&&placed)drawPortraitBack(placed,id,t,kind,tile);
         if((cur==="fx"||cur==="glow")&&id)drawHalo(tile,id,t);
+        if(id&&face&&placed&&(cur==="head"||cur==="face"||cur==="neck")){
+          var one={};
+          one[cur]=id;
+          drawFront(placed,one,t,kind);
+        }
         ctx.restore();
         if(cur==="fur"){
           colorChip(bx+boxW/2, by+boxH*0.72, Math.min(boxW,boxH)*0.16, it[0]);
-        }else if(id&&face&&(cur==="head"||cur==="face"||cur==="neck")){
-          var one={};
-          one[cur]=id;
-          drawFront(tile,one,t,kind,tileSrc);
         }
         api.txt(it[1],x+cellW/2,y+cellH-14,12,"#2B3550",null,"center",700);
         api.hit(x,Math.max(y,gridTop),cellW,Math.min(cellH,gridTop+viewH-Math.max(y,gridTop)),function(){
@@ -1215,4 +1251,5 @@ Birthday party:CAKE,CANDLES,BALLOON,PRESENTS|Shepherd breeds:GERMAN,AUSTRALIAN,B
   root.__closet.outfit=function(kind){var d=box();if(kind==="kenai")return d.kenai;if(kind==="marina"||kind==="marinaA")return d.marina;return d.pup;};
   root.__closet.land=LAND;
   root.__closet.crop=cropRect;
+  root.__closet.layoutTile=layoutTile;
 })();
