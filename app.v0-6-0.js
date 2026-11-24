@@ -369,8 +369,10 @@ Birthday party:CAKE,CANDLES,BALLOON,PRESENTS|Shepherd breeds:GERMAN,AUSTRALIAN,B
     }
     s.closet.pup=s.closet.pup||{};
     s.closet.marina=s.closet.marina||{};
+    if(!s.closet.kenai)s.closet.kenai={head:"beanie",face:"stars",neck:"scarf",back:"pack",fx:"hearts",fur:"cream"};
     if(!s.closet.pup.fur)s.closet.pup.fur="honey";
     if(!s.closet.marina.fur)s.closet.marina.fur="dusk";
+    if(!s.closet.kenai.fur)s.closet.kenai.fur="cream";
     return s.closet;
   }
   function furOf(wear){return FURS[wear&&wear.fur]||FURS.honey}
@@ -689,13 +691,61 @@ Birthday party:CAKE,CANDLES,BALLOON,PRESENTS|Shepherd breeds:GERMAN,AUSTRALIAN,B
     wearAll(wear,FIT.marina,t,"front");
     ctx.restore();
   }
+  function artIm(name){
+    var pack=window.__art80&&window.__art80.img;
+    var im=pack&&pack[name];
+    return im&&im.complete&&im.naturalWidth?im:null;
+  }
+  function containBox(im,x,y,w,h){
+    var s=Math.min(w/im.naturalWidth,h/im.naturalHeight);
+    var dw=im.naturalWidth*s, dh=im.naturalHeight*s;
+    var dx=x+(w-dw)/2, dy=y+(h-dh)/2;
+    ctx.drawImage(im,dx,dy,dw,dh);
+    return {x:dx,y:dy,w:dw,h:dh};
+  }
+  function coverCrop(im,x,y,w,h,top,span){
+    var sw=im.naturalWidth, sh=im.naturalHeight;
+    var sy=sh*top, sH=sh*span, sW=sw, sx=0;
+    var destA=w/Math.max(1,h), srcA=sW/Math.max(1,sH);
+    if(srcA>destA){var nw=sH*destA; sx+=(sW-nw)/2; sW=nw;}
+    else {var nh=sW/destA; sy+=(sH-nh)/2; sH=nh;}
+    ctx.drawImage(im,sx,sy,sW,sH,x,y,w,h);
+  }
+  function dressOn(box,wear,t,fx,fy,fr){
+    if(!wear||!box)return;
+    var hx=box.x+box.w*(fx||0.5), hy=box.y+box.h*(fy||0.4), hr=Math.max(8,box.h*(fr||0.16));
+    var sc=hr/22;
+    ctx.save();
+    ctx.translate(hx,hy);
+    ctx.scale(sc,sc);
+    var fit={hy:0,hr:22,eye:6,neck:20,paw:48,back:14,side:32};
+    wearAll(wear,fit,t||0,"back");
+    wearAll(wear,fit,t||0,"front");
+    ctx.restore();
+  }
   var root=typeof window==="undefined"?{}:window;
   root.__closet={
     marcia:function(c,x,y,sc,opt,sv){
       ctx=c;opt=opt||{};
       try{
         var wear=opt.__preview?opt.acc:box().pup;
-        paintPup(x,y,sc||1,wear,opt.t||0);
+        var bear=artIm("bearA"), kenai=artIm("kenaiA");
+        var s=sc||1;
+        if(bear){
+          if(s<0.5&&kenai){
+            var bh=Math.max(26,92*s), kh=bh*1.12;
+            var bw=bh, kw=kh;
+            ctx.drawImage(bear,x-bw-1,y-bh,bw,bh);
+            ctx.drawImage(kenai,x+1,y-kh,kw,kh);
+          }else{
+            var h=Math.max(36,150*s), w=h;
+            ctx.drawImage(bear,x-w/2,y-h*0.92,w,h);
+            dressOn({x:x-w/2,y:y-h*0.92,w:w,h:h},wear,opt.t||0,0.5,0.42,0.18);
+          }
+          drawTrail();
+          return;
+        }
+        paintPup(x,y,s,wear,opt.t||0);
         drawTrail();
       }catch(err){}
     },
@@ -714,21 +764,43 @@ Birthday party:CAKE,CANDLES,BALLOON,PRESENTS|Shepherd breeds:GERMAN,AUSTRALIAN,B
       api.bg();
       api.header("Wardrobe","modes");
       api.txt("Everything is free",W/2,84,13,"#535D78",null,"center",600);
-      var who=data.who==="marina"?"marina":"pup";
-      var bw=(W-48)/2;
-      api.button(16,96,bw,44,who==="pup"?"Pup":"Pup",function(){data.who="pup";api.sfx("click")}, {c1:who==="pup"?"#1B4F3C":"#F2F6F0",c2:who==="pup"?"#145C40":"#E7F2EB",st:"#2B3550",size:16});
-      api.button(24+bw,96,bw,44,"Marina",function(){data.who="marina";api.sfx("click")},{c1:who==="marina"?"#1B4F3C":"#F2F6F0",c2:who==="marina"?"#145C40":"#E7F2EB",st:"#2B3550",size:16});
-      var prevH=H<520?132:188;
+      var who=data.who==="marina"?"marina":data.who==="kenai"?"kenai":"pup";
+      var gap=8, bw=(W-32-gap*2)/3;
+      [["pup","Bear"],["kenai","Kenai"],["marina","Marina"]].forEach(function(tab,i){
+        var on=who===tab[0], x=16+i*(bw+gap);
+        api.button(x,96,bw,44,tab[1],function(){data.who=tab[0];api.sfx("click")},{c1:on?"#1B4F3C":"#F2F6F0",c2:on?"#145C40":"#E7F2EB",st:on?"#0E3326":"#2B3550",size:15});
+      });
+      var prevH=H<520?168:220;
       api.rr(16,148,W-32,prevH,18);
       ctx.fillStyle="#E7F2EB";ctx.fill();
-      ctx.strokeStyle="#E6E0D8";ctx.lineWidth=2;ctx.stroke();
-      var scP=Math.min(0.98,(prevH-78)/100), scM=scP*0.9, foot=148+prevH-22;
-      ctx.save();ctx.beginPath();ctx.rect(18,150,W-36,prevH-6);ctx.clip();
-      paintMarina(W*0.30,foot-34*scM,scM,data.marina,t);
-      paintPup(W*0.72,foot-40*scP,scP,data.pup,t);
-      ctx.restore();
-      api.txt("Marina",W*0.30,148+18,13,"#2B3550",null,"center",700);
-      api.txt("Pup",W*0.72,148+18,13,"#2B3550",null,"center",700);
+      ctx.strokeStyle="#1B4F3C";ctx.lineWidth=2;ctx.stroke();
+      var marinaIm=artIm("marina"), bearIm=artIm("bearA"), kenaiIm=artIm("kenaiA");
+      ctx.save();ctx.beginPath();ctx.rect(18,150,W-36,prevH-28);ctx.clip();
+      if(marinaIm&&bearIm&&kenaiIm){
+        var col=(W-48)/3, top=156, areaH=prevH-52;
+        var mb=containBox(marinaIm,16+col*0+4,top,col-8,areaH);
+        var bearH=Math.min(areaH-8, (areaH-8)/1.12);
+        var kenaiH=bearH*1.12;
+        var foot=top+areaH-2;
+        var bb={x:16+col+ (col-bearH)/2, y:foot-bearH, w:bearH, h:bearH};
+        var kb={x:16+col*2+ (col-kenaiH)/2, y:foot-kenaiH, w:kenaiH, h:kenaiH};
+        ctx.drawImage(bearIm,bb.x,bb.y,bb.w,bb.h);
+        ctx.drawImage(kenaiIm,kb.x,kb.y,kb.w,kb.h);
+        dressOn(mb,data.marina,t,0.5,0.22,0.11);
+        dressOn(bb,data.pup,t,0.5,0.46,0.2);
+        dressOn(kb,data.kenai,t,0.5,0.48,0.18);
+        ctx.restore();
+        api.txt("Marina",16+col*0.5,148+prevH-12,13,who==="marina"?"#10281C":"#2B3550",null,"center",700);
+        api.txt("Bear",16+col*1.5,148+prevH-12,13,who==="pup"?"#10281C":"#2B3550",null,"center",700);
+        api.txt("Kenai",16+col*2.5,148+prevH-12,13,who==="kenai"?"#10281C":"#2B3550",null,"center",700);
+      }else{
+        var scP=Math.min(0.98,(prevH-78)/100), scM=scP*0.9, foot=148+prevH-22;
+        paintMarina(W*0.30,foot-34*scM,scM,data.marina,t);
+        paintPup(W*0.72,foot-40*scP,scP,data.pup,t);
+        ctx.restore();
+        api.txt("Marina",W*0.30,148+18,13,"#2B3550",null,"center",700);
+        api.txt("Bear",W*0.72,148+18,13,"#2B3550",null,"center",700);
+      }
       var slotY=148+prevH+8;
       var sw=(W-32)/SLOTS.length;
       var cur=data.slot&&CATALOG[data.slot]?data.slot:"head";
@@ -748,7 +820,7 @@ Birthday party:CAKE,CANDLES,BALLOON,PRESENTS|Shepherd breeds:GERMAN,AUSTRALIAN,B
       var cols=W>=680?4:3;
       var gap=8;
       var cellW=Math.floor((W-32-(cols-1)*gap)/cols);
-      var cellH=Math.max(86,Math.ceil(44/(typeof S=="number"&&S>0?S:1))+48);
+      var cellH=Math.max(118,Math.ceil(52/(typeof S=="number"&&S>0?S:1))+68);
       var rows=Math.ceil(items.length/cols);
       var maxS=Math.max(0,rows*(cellH+gap)-viewH);
       var sc=Math.max(0,Math.min(api.getScroll(),maxS));
@@ -764,17 +836,31 @@ Birthday party:CAKE,CANDLES,BALLOON,PRESENTS|Shepherd breeds:GERMAN,AUSTRALIAN,B
         api.rr(x,y,cellW,cellH,14);
         ctx.fillStyle="#FFFFFF";ctx.fill();
         ctx.lineWidth=on?3:1.5;ctx.strokeStyle=on?"#1B4F3C":"#E6E0D8";ctx.stroke();
-        ctx.save();ctx.translate(x+cellW/2,y+38);ctx.scale(0.72,0.72);
+        var boxH=Math.round(cellH*0.70), boxW=Math.round(cellW*0.82);
+        var bx=x+(cellW-boxW)/2, by=y+6;
+        var face=who==="marina"?artIm("marina"):who==="kenai"?artIm("kenaiA"):artIm("bearA");
+        ctx.save();
+        ctx.beginPath();
+        if(ctx.roundRect)ctx.roundRect(bx,by,boxW,boxH,12);else ctx.rect(bx,by,boxW,boxH);
+        ctx.clip();
+        if(face){
+          if(who==="marina")coverCrop(face,bx,by,boxW,boxH,0.02,0.46);
+          else coverCrop(face,bx,by,boxW,boxH,0,0.86);
+        }else{
+          ctx.fillStyle="#E7F2EB";ctx.fillRect(bx,by,boxW,boxH);
+        }
+        ctx.restore();
+        ctx.save();
+        ctx.translate(bx+boxW/2, by+boxH*(who==="marina"?0.42:0.58));
+        ctx.scale(boxH/86, boxH/86);
         if(cur==="fur"){
           var fz=FURS[it[0]];
-          circ(0,6,16,fz.body);circ(-6,2,3,fz.chest);
+          circ(18,16,9,fz.body);
         }else if(cur==="back"||cur==="fx"){
-          circ(0,4,10,"#F3E6D4");
-          var mini={hy:0,hr:16,eye:2,neck:16,paw:28,back:8,side:22};
+          var mini={hy:-6,hr:16,eye:2,neck:10,paw:22,back:4,side:20};
           if(cur==="back")backOf(id,mini,t);else frontOf("fx",id,mini,t);
         }else{
-          circ(0,6,14,"#F1C9A5");
-          var mini2={hy:6,hr:14,eye:10,neck:22,paw:30,back:10,side:18};
+          var mini2={hy:-2,hr:16,eye:4,neck:14,paw:26,back:8,side:18};
           frontOf(cur,id,mini2,t);
         }
         ctx.restore();
