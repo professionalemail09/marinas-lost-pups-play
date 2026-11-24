@@ -2,7 +2,7 @@
    Loaded after the game so the desk, title, host line, menu, and owner use them. */
 (function () {
   if (typeof window === "undefined") return;
-  var V = "0-6-7";
+  var V = "0-6-8";
   var SRC = {
     bear: "assets/characters/80s/bear-80s.webp?v=" + V,
     kenai: "assets/characters/80s/kenai-80s.webp?v=" + V,
@@ -26,6 +26,10 @@
     if (!ready(im)) return;
     var w = h * (im.naturalWidth / im.naturalHeight);
     ctx.drawImage(im, cx - w / 2, foot - h, w, h);
+  }
+  function seatBox(im, cx, foot, h) {
+    var w = h * (im.naturalWidth / im.naturalHeight);
+    return { x: cx - w / 2, y: foot - h - h * 0.04, w: w, h: h * 1.08 };
   }
   function seated(im, cx, foot, h) {
     if (!ready(im)) return;
@@ -83,8 +87,23 @@
       sky.addColorStop(1, "#143D2E");
       ctx.fillStyle = sky;
       ctx.fillRect(x, y, w, h);
+      var closet = window.__closet;
+      var bearBox = seatBox(img.bearA, bx, dy + 6, bearH);
+      var kenaiBox = seatBox(img.kenaiA, kx, dy + 6, kenaiH);
+      if (closet && closet.dressBack && closet.outfit) {
+        closet.dressBack(ctx, bearBox, closet.outfit("bear"), tm || 0, "bear");
+        closet.dressBack(ctx, kenaiBox, closet.outfit("kenai"), tm || 0, "kenai");
+      }
       seated(img.bearA, bx, dy + 6, bearH);
       seated(img.kenaiA, kx, dy + 6, kenaiH);
+      if (closet && closet.dressGear && closet.outfit) {
+        closet.dressGear(ctx, bearBox, closet.outfit("bear"), tm || 0, "bear");
+        closet.dressGear(ctx, kenaiBox, closet.outfit("kenai"), tm || 0, "kenai");
+      }
+      if (closet && closet.dressFront && closet.outfit) {
+        closet.dressFront(ctx, bearBox, closet.outfit("bear"), tm || 0, "bear");
+        closet.dressFront(ctx, kenaiBox, closet.outfit("kenai"), tm || 0, "kenai");
+      }
       var dg = ctx.createLinearGradient(x, dy - lip, x, y + h);
       dg.addColorStop(0, "#1B4F3C");
       dg.addColorStop(0.45, "#2F6E56");
@@ -236,14 +255,24 @@
       if (!ready(im) || typeof ctx === "undefined") return prev.apply(this, arguments);
       var scale = sc || 1;
       var bustIm = scale < 0.55 && ready(img.marinaA) ? img.marinaA : im;
+      var closet = window.__closet;
+      var wear = closet && closet.outfit ? closet.outfit("marina") : null;
       ctx.save();
       ctx.translate(x, y);
       ctx.scale(scale, scale);
       if (bustIm === img.marinaA) {
+        var box = { x: -52, y: -70, w: 104, h: 104 };
+        if (closet && wear) closet.dressBack(ctx, box, wear, 0, "marinaA");
         ctx.drawImage(bustIm, -52, -70, 104, 104);
+        if (closet && wear && closet.dressGear) closet.dressGear(ctx, box, wear, 0, "marinaA");
+        if (closet && wear) closet.dressFront(ctx, box, wear, 0, "marinaA");
       } else {
         var h = 168, w = h * im.naturalWidth / im.naturalHeight;
+        var box = { x: -w / 2, y: 96 - h, w: w, h: h };
+        if (closet && wear) closet.dressBack(ctx, box, wear, 0, "marina");
         ctx.drawImage(im, -w / 2, 96 - h, w, h);
+        if (closet && wear && closet.dressGear) closet.dressGear(ctx, box, wear, 0, "marina");
+        if (closet && wear) closet.dressFront(ctx, box, wear, 0, "marina");
       }
       ctx.restore();
     }
