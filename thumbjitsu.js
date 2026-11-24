@@ -1,6 +1,7 @@
-/* Thumbjitsu. Local only. Two hands each, five fingers, two feet.
-   One phone: each player owns one half and two touches (one per hand).
-   Versus Kenai (easy) or Bear (normal / hard). No network. */
+/* Thumbjitsu. Local only. Two hands each, five real fingers, two feet.
+   The first finger on a hand moves it. Each extra finger is the thumb,
+   index, middle, ring, or pinky. Two players get five touches each.
+   Versus the computer, the human gets ten. No network. */
 (function () {
   if (typeof window === "undefined") return;
 
@@ -19,9 +20,9 @@
   };
   var TIP_NAMES = ["thumb", "index", "middle", "ring", "pinky"];
   var DIFF = {
-    easy: { speed: 0.48, err: 0.05, escape: 0.28, windup: 0.34, name: "Kenai" },
-    normal: { speed: 0.66, err: 0.026, escape: 0.62, windup: 0.16, name: "Bear" },
-    hard: { speed: 0.88, err: 0.01, escape: 0.86, windup: 0, name: "Bear" }
+    easy: { speed: 0.72, err: 0.045, escape: 0.35, windup: 0.3, strike: 1.2, plan: 2, react: 0.42, name: "Kenai" },
+    normal: { speed: 1.05, err: 0.02, escape: 0.7, windup: 0.12, strike: 1.65, plan: 2, react: 0.16, name: "Bear" },
+    hard: { speed: 1.4, err: 0.004, escape: 0.95, windup: 0, strike: 2.15, plan: 2, react: 0.04, name: "Bear" }
   };
 
   var canvas, ctx, raf = 0, on = false, lastT = 0;
@@ -67,9 +68,27 @@
     try { if (navigator.vibrate) navigator.vibrate(pat); } catch (e) {}
   }
   function tipWorld(hand, name) {
+    if (hand.fingers && hand.fingers[name]) return { x: hand.fingers[name].x, y: hand.fingers[name].y };
     var t = TIPS[name];
     var p = rot(t.x * HAND, t.y * HAND, hand.ang);
     return { x: hand.x + p.x, y: hand.y + p.y };
+  }
+  function fingerLive(hand, name) {
+    if (!hand) return false;
+    if (hand.auto) return true;
+    return !!(hand.fingers && hand.fingers[name]);
+  }
+  function fingerCount(hand) {
+    if (!hand) return 0;
+    if (hand.auto) return 5;
+    var n = 0;
+    TIP_NAMES.forEach(function (nm) { if (hand.fingers && hand.fingers[nm]) n++; });
+    return n;
+  }
+  function blankFingers() {
+    var f = {};
+    TIP_NAMES.forEach(function (nm) { f[nm] = null; });
+    return f;
   }
   function allTips(hand) {
     var o = {};
@@ -86,7 +105,8 @@
   }
   function makeHand(x, y, ang) {
     return {
-      x: x, y: y, vx: 0, vy: 0, ang: ang, tx: x, ty: y, aiming: false, pointer: null,
+      x: x, y: y, vx: 0, vy: 0, ang: ang, tx: x, ty: y, aiming: false, mover: null,
+      fingers: blankFingers(), auto: false,
       stam: 100, stun: 0, charge: 0, chargeKey: "", need: 1, pending: null,
       wiggle: false, px: 0, py: 0, psp: 0, peak: 0, blockT: 0, finger: "thumb"
     };
@@ -123,9 +143,11 @@
       p.hands[i].stam = 100;
       p.hands[i].stun = 0;
       p.hands[i].charge = 0;
-      p.hands[i].pointer = null;
+      p.hands[i].mover = null;
       p.hands[i].aiming = false;
+      p.hands[i].fingers = blankFingers();
       p.feet[i].charge = 0;
+      p.feet[i].threat = 0;
     }
   }
 
@@ -145,9 +167,11 @@
     pointers = {};
     G.players.forEach(function (p, i) { p.score = 0; layoutHands(p, i); });
     if (G.ai) {
+      G.players[1].hands.forEach(function (h) { h.auto = true; });
       G.ai.deck = PLANS.slice();
-      G.ai.t = 0;
-      G.ai.plan = "thumb";
+      G.ai.t = G.diff.plan || 2;
+      G.ai.plan = "double";
+      G.ai.seen.double = (G.ai.seen.double || 0) + 1;
       G.ai.wind = 0;
       G.ai.bite = 0;
     }
@@ -175,7 +199,8 @@
       bonus: 0,
       winner: null,
       reason: "",
-      seed: 42,
+      refused: 0,
+      seed: opts.seed || 42,
       count: 3,
       flash: "",
       flashT: 0,
@@ -184,9 +209,10 @@
         makePlayer(ai ? diff.name : "Player 2")
       ],
       diff: ai ? diff : null,
-      ai: ai && !opts.script ? { plan: "thumb", t: 0, seen: {}, deck: PLANS.slice(), wind: 0, bite: 0 } : null
+      ai: ai && !opts.script ? { plan: "double", t: (diff.plan || 2), seen: { double: 1 }, deck: PLANS.slice(), wind: 0, bite: 0 } : null
     };
     G.players.forEach(function (p, i) { layoutHands(p, i); });
+    if (G.ai) G.players[1].hands.forEach(function (h) { h.auto = true; });
     if (opts.skip) {
       phase = "fight";
       G.time = G.roundLen;
@@ -215,9 +241,8 @@
     if (winner >= 0) G.wins[winner]++;
     phase = "round";
     G.roundT = G.banner;
-    pointers = {};
-    G.players.forEach(function (p) { p.hands.forEach(function (h) { h.pointer = null; h.aiming = false; }); });
-    if (reason === "feet") say("Bear", "BOTH FEET. Round's over. Sit down.", true);
+    releaseTouches();
+    if (reason === "feet") say("Bear", "BOTH FEET. The match is over. Sit down.", true);
     else if (winner < 0) say("Kenai", "Even hands. One more.", true);
     else if (winner === 0) say("Bear", G.players[1].name + " got sat on.", true);
     else say("Bear", "That's on you. Pinned, planted, done.", true);
@@ -238,6 +263,32 @@
     }
     G.round++;
     beginRound();
+  }
+
+  function releaseTouches() {
+    pointers = {};
+    if (!G) return;
+    G.players.forEach(function (p) {
+      p.hands.forEach(function (h) {
+        h.mover = null;
+        h.aiming = false;
+        h.fingers = blankFingers();
+      });
+    });
+  }
+
+  function finishMatch(winner, reason) {
+    if (!G || phase === "match" || phase === "menu") return;
+    G.winner = winner;
+    G.reason = reason || "";
+    if (winner >= 0) G.wins[winner] = Math.max(G.wins[winner], 2);
+    phase = "match";
+    releaseTouches();
+    if (reason === "feet") say("Bear", "BOTH FEET. The match is over. Sit down.", true);
+    else if (winner === 0) say("Bear", "That's the match. They can clap.", true);
+    else say("Bear", "Match over. You lost the hand.", true);
+    sound(winner === 0 ? "win" : "lose");
+    vibe(reason === "feet" ? [24, 36, 24, 36, 40] : 28);
   }
 
   function multOf(h) {
@@ -267,23 +318,18 @@
     return inside;
   }
   function wrapOf(attacker, defender) {
+    var names = TIP_NAMES.filter(function (n) { return fingerLive(attacker, n); });
+    if (names.length < 5) return null;
     var tips = allTips(attacker);
     var center = { x: defender.x, y: defender.y };
-    if (hypot(attacker.x - center.x, attacker.y - center.y) > 0.15) return null;
-    function poly(names) {
-      var pts = names.map(function (n) {
-        var p = tips[n];
-        return { x: p.x, y: p.y, a: Math.atan2(p.y - attacker.y, p.x - attacker.x), n: n };
-      });
-      pts.sort(function (a, b) { return a.a - b.a; });
-      return [{ x: attacker.x, y: attacker.y }].concat(pts);
-    }
-    if (pointIn(center, poly(TIP_NAMES))) return { full: true, lead: closestTip(tips, center) };
-    var far = TIP_NAMES.slice().sort(function (a, b) {
-      return hypot(tips[b].x - center.x, tips[b].y - center.y) - hypot(tips[a].x - center.x, tips[a].y - center.y);
-    })[0];
-    if (pointIn(center, poly(TIP_NAMES.filter(function (n) { return n !== far; })))) return { full: false, lead: closestTip(tips, center) };
-    return null;
+    if (hypot(attacker.x - center.x, attacker.y - center.y) > 0.18) return null;
+    var pts = names.map(function (n) {
+      var p = tips[n];
+      return { x: p.x, y: p.y, a: Math.atan2(p.y - attacker.y, p.x - attacker.x) };
+    });
+    pts.sort(function (a, b) { return a.a - b.a; });
+    if (!pointIn(center, [{ x: attacker.x, y: attacker.y }].concat(pts))) return null;
+    return { full: true, lead: closestTip(tips, center) };
   }
 
   function seek(hand, x, y, speed, dt) {
@@ -312,106 +358,123 @@
     var ai = G.ai;
     if (!ai || G.script) return;
     var diff = G.diff;
+    var opp = G.players[0];
+    var me = G.players[1];
+    me.hands.forEach(function (h) { h.auto = true; });
+    var scoring = G.holds.some(function (h) { return h.by === 1; });
     if (ai.bite > 0) ai.bite -= dt;
-    ai.t -= dt;
-    if (ai.t <= 0) {
+    if (scoring) ai.t = diff.plan;
+    else ai.t -= dt;
+    if (ai.t <= 0 && !scoring) {
       if (!ai.deck.length) ai.deck = PLANS.slice();
       ai.plan = ai.deck.shift();
       ai.seen[ai.plan] = (ai.seen[ai.plan] || 0) + 1;
-      ai.t = 0.85;
+      ai.t = diff.plan;
       ai.wind = diff.windup;
-      if (ai.plan === "cover") say("Bear", "Eyes on a foot.");
-      else if (ai.plan === "double") say("Bear", "Both feet. Don't let them sit.");
+      if (ai.plan === "cover" || ai.plan === "double") say("Bear", "Both feet. Sit down.");
       else if (ai.plan === "feint") say("Kenai", "That's a feint. Don't bite.");
       else if (ai.plan === "thumb") say("Bear", "Thumb coming in.");
       else if (ai.plan === "encircle") say("Kenai", "They're closing a ring on a hand.");
     }
-    if (ai.wind > 0) { ai.wind -= dt; return; }
-    var opp = G.players[0];
-    var me = G.players[1];
-    var err = function () { return (seedRand() - 0.5) * diff.err * 2; };
-    var ang = Math.PI;
-    var plan = ai.bite > 0 ? "feint" : ai.plan;
-    var held = G.holds.some(function (h) { return h.victim === 1 && h.kind !== "cover"; });
-    if (held && seedRand() < diff.escape) plan = "pry";
-
-    function aimHand(hi, finger, point) {
-      var h = me.hands[hi];
-      var want = Math.atan2(point.y - h.y, point.x - h.x);
-      var local = Math.atan2(TIPS[finger].y, TIPS[finger].x);
-      var a = want - local;
-      var palm = palmFor(finger, a, { x: point.x + err(), y: point.y + err() });
-      seek(h, clamp(palm.x, 0.06, 0.94), clamp(palm.y, 0.06, 0.94), diff.speed, dt);
-      face(h, a, dt);
-      h.finger = finger;
+    G.holds.forEach(function (h) {
+      if (h.victim !== 1) return;
+      var late = 0.78 - (0.78 - 0.64) * diff.escape;
+      if (h.ring >= late && h.ring <= 0.8) me.hands.forEach(function (hand) { hand.wiggle = true; });
+    });
+    if (ai.plan !== "cover" && ai.plan !== "double") {
+      opp.hands.forEach(function (oh) {
+        if (fingerCount(oh) === 0) return;
+        me.feet.forEach(function (f) {
+          var dx = f.x - oh.x, dy = f.y - oh.y, dist = hypot(dx, dy) || 1;
+          var closing = dx * oh.vx + dy * oh.vy;
+          if (dist < 0.22 && closing > 0.01) {
+            f.threat = (f.threat || 0) + dt;
+            if (f.threat >= diff.react) {
+              f.tx = clamp(f.x + dx / dist * 0.18, 0.1, 0.9);
+              f.ty = clamp(f.y + dy / dist * 0.18, 0.1, 0.9);
+            }
+          } else f.threat = 0;
+        });
+      });
     }
-
+    if (ai.wind > 0) { ai.wind -= dt; return; }
+    var err = function () { return (seedRand() - 0.5) * diff.err * 2; };
+    var plan = ai.bite > 0 ? "feint" : ai.plan;
+    function aimPalm(h, x, y, speed, ang) {
+      seek(h, clamp(x, 0.06, 0.94), clamp(y, 0.06, 0.94), speed, dt);
+      if (ang != null) face(h, ang, dt);
+    }
+    function strikeThumb(h, point) {
+      var aim = Math.atan2(point.y - h.y, point.x - h.x) + Math.PI / 2;
+      var palm = palmFor("thumb", aim, { x: point.x + err(), y: point.y + err() });
+      aimPalm(h, palm.x, palm.y, diff.strike, aim);
+      var tip = tipWorld(h, "thumb");
+      if (hypot(point.x - tip.x, point.y - tip.y) < 0.22) {
+        h.vx = (point.x - tip.x) * 8;
+        h.vy = (point.y - tip.y) * 8;
+      }
+    }
     if (plan === "thumb") {
-      aimHand(0, "thumb", tipWorld(opp.hands[0], "thumb"));
-      aimHand(1, "grab" === plan ? "middle" : "index", tipWorld(opp.hands[1], "index"));
+      strikeThumb(me.hands[0], tipWorld(opp.hands[0], "thumb"));
+      strikeThumb(me.hands[1], tipWorld(opp.hands[1], "thumb"));
     } else if (plan === "encircle") {
-      [0, 1].forEach(function (hi) {
-        var target = opp.hands[hi];
+      opp.hands.forEach(function (target, hi) {
         var h = me.hands[hi];
         var dir = Math.atan2(target.y - h.y, target.x - h.x);
         var faceAng = dir + Math.PI / 2;
-        var fwd = rot(0, -0.09, faceAng);
-        seek(h, clamp(target.x - fwd.x + err(), 0.06, 0.94), clamp(target.y - fwd.y + err(), 0.06, 0.94), diff.speed, dt);
-        face(h, faceAng, dt);
-        h.finger = "middle";
+        var fwd = rot(0, -0.07, faceAng);
+        aimPalm(h, target.x - fwd.x + err(), target.y - fwd.y + err(), diff.speed, faceAng);
       });
     } else if (plan === "block") {
-      var fast = opp.hands[0];
-      if (hypot(opp.hands[1].vx, opp.hands[1].vy) > hypot(fast.vx, fast.vy)) fast = opp.hands[1];
-      var ft = allTips(fast);
-      var lead = closestTip(ft, me.hands[0]);
-      aimHand(0, "ring", ft[lead]);
-      aimHand(1, "ring", tipWorld(opp.hands[1], "thumb"));
-    } else if (plan === "cover") {
-      aimHand(0, "pinky", opp.feet[0]);
-      aimHand(1, "index", tipWorld(opp.hands[0], "thumb"));
-      me.feet[0].tx = opp.feet[1].x;
-      me.feet[0].ty = opp.feet[1].y;
-    } else if (plan === "double") {
-      aimHand(0, "pinky", opp.feet[0]);
-      aimHand(1, "pinky", opp.feet[1]);
-      me.feet[0].tx = opp.feet[0].x + 0.02;
-      me.feet[0].ty = opp.feet[0].y;
-      me.feet[1].tx = opp.feet[1].x - 0.02;
-      me.feet[1].ty = opp.feet[1].y;
+      opp.hands.forEach(function (target, hi) {
+        var tip = tipWorld(target, "thumb");
+        var h = me.hands[hi];
+        var aim = Math.atan2(tip.y - h.y, tip.x - h.x) + Math.PI / 2;
+        var palm = palmFor("ring", aim, tip);
+        aimPalm(h, palm.x, palm.y, diff.speed, aim);
+      });
+    } else if (plan === "cover" || plan === "double") {
+      aimPalm(me.hands[0], opp.feet[0].x, opp.feet[0].y, diff.speed * 1.45, Math.PI);
+      aimPalm(me.hands[1], opp.feet[1].x, opp.feet[1].y, diff.speed * 1.45, Math.PI);
+      if (plan === "double") {
+        me.feet[0].tx = opp.feet[0].x;
+        me.feet[0].ty = opp.feet[0].y;
+        me.feet[1].tx = opp.feet[1].x;
+        me.feet[1].ty = opp.feet[1].y;
+      }
     } else if (plan === "step") {
-      me.feet[0].tx = clamp(opp.feet[0].x + err(), 0.08, 0.92);
-      me.feet[0].ty = clamp(opp.feet[0].y + 0.05, 0.08, 0.92);
-      me.feet[1].tx = clamp(me.feet[1].x + 0.1, 0.08, 0.92);
-      me.feet[1].ty = 0.16;
-      aimHand(1, "thumb", tipWorld(opp.hands[1], "thumb"));
-      aimHand(0, "ring", tipWorld(opp.hands[0], "thumb"));
+      me.feet[0].tx = clamp(opp.feet[0].x + 0.12, 0.1, 0.9);
+      me.feet[0].ty = clamp(opp.feet[0].y + 0.08, 0.1, 0.9);
+      strikeThumb(me.hands[1], tipWorld(opp.hands[1], "thumb"));
     } else if (plan === "feint") {
       var th = tipWorld(opp.hands[0], "thumb");
-      aimHand(0, "thumb", { x: th.x + 0.12, y: th.y + 0.08 });
-      aimHand(1, "index", tipWorld(opp.hands[1], "thumb"));
+      strikeThumb(me.hands[0], { x: th.x + 0.1, y: th.y + 0.08 });
+      strikeThumb(me.hands[1], tipWorld(opp.hands[1], "index"));
     } else if (plan === "pry") {
-      aimHand(0, "index", tipWorld(opp.hands[0], "thumb"));
-      aimHand(1, "index", tipWorld(opp.hands[1], "thumb"));
-      if (held) {
-        me.hands.forEach(function (h) {
-          if (seedRand() < diff.escape) { h.vx *= -1; h.vy *= -1; h.wiggle = true; }
-        });
-      }
+      strikeThumb(me.hands[0], tipWorld(opp.hands[0], "thumb"));
+      strikeThumb(me.hands[1], tipWorld(opp.hands[1], "thumb"));
     }
     me.feet.forEach(function (f) {
-      var dx = f.tx - f.x, dy = f.ty - f.y;
-      var step = Math.min(1, dt * diff.speed * 1.4);
-      f.x += dx * step;
-      f.y += dy * step;
+      f.x += (f.tx - f.x) * Math.min(1, dt * diff.speed * 1.6);
+      f.y += (f.ty - f.y) * Math.min(1, dt * diff.speed * 1.6);
     });
-    me.hands.forEach(function (h) {
-      var sp = hypot(h.vx, h.vy);
-      if (sp > 0.08) {
-        var local = Math.atan2(TIPS[h.finger || "thumb"].y, TIPS[h.finger || "thumb"].x);
-        face(h, Math.atan2(h.vy, h.vx) - local, dt);
-      }
-    });
+  }
+
+  function scriptHuman() {
+    if (!G || !G.ai) return;
+    var me = G.players[0];
+    var opp = G.players[1];
+    var target = tipWorld(opp.hands[0], "thumb");
+    var h = me.hands[0];
+    var aim = Math.atan2((target.y + 0.05) - h.y, (target.x + 0.04) - h.x) + Math.PI / 2;
+    var palm = palmFor("thumb", aim, { x: target.x + 0.04, y: target.y + 0.05 });
+    h.aiming = true;
+    h.tx = palm.x;
+    h.ty = palm.y;
+    h.ang = aim;
+    var off = rot(TIPS.thumb.x * HAND, TIPS.thumb.y * HAND, h.ang);
+    h.fingers.thumb = { x: h.x + off.x, y: h.y + off.y };
+    h.mover = h.mover || "script";
   }
 
   function humanMove(dt) {
@@ -510,6 +573,17 @@
   }
 
   function updateHolds(dt) {
+    G.holds = G.holds.filter(function (h) {
+      var hand = h.hand == null ? null : G.players[h.by].hands[h.hand];
+      if (h.kind === "thumb") return fingerLive(hand, "thumb");
+      if (h.kind === "encircle") return !!(hand && fingerCount(hand) >= 5);
+      if (h.kind === "cover") {
+        var owner = G.players[h.by];
+        if (hand) return fingerCount(hand) > 0;
+        return fingerCount(owner.hands[0]) + fingerCount(owner.hands[1]) > 0;
+      }
+      return false;
+    });
     var keep = [];
     var extra = [];
     G.holds.forEach(function (h) {
@@ -592,7 +666,7 @@
       G.holds.forEach(function (h) {
         if (h.kind === "cover" && h.by === by && h.vfoot != null) s[h.vfoot] = true;
       });
-      if (s[0] && s[1]) endRound("feet", by);
+      if (s[0] && s[1]) finishMatch(by, "feet");
     });
   }
 
@@ -621,8 +695,8 @@
           if (!best || pri > best.pri) best = { pri: pri, key: key, need: need, spec: spec };
         }
         opp.feet.forEach(function (f, fi) {
-          if (hypot(h.x - f.x, h.y - f.y) + FOOT_CORE <= PALM_R) {
-            var pinky = closestTip(tips, f) === "pinky";
+          if (fingerCount(h) > 0 && hypot(h.x - f.x, h.y - f.y) + FOOT_CORE <= PALM_R) {
+            var pinky = fingerLive(h, "pinky") && closestTip(tips, f) === "pinky";
             offer(4, "cover:" + (1 - pi) + ":" + fi, pinky ? 0.32 : 0.46, {
               kind: "cover", by: pi, hand: hi, foot: null, finger: pinky ? "pinky" : closestTip(tips, f),
               victim: 1 - pi, vhand: null, vfinger: null, vfoot: fi, x: f.x, y: f.y
@@ -638,7 +712,7 @@
           var thumbKey = "thumb:" + (1 - pi) + ":" + ei;
           var finishing = h.chargeKey === thumbKey && d < TIP_R;
           if (pi === 0 && hi === 0 && ei === 0) G.trace = { d: d, sp: sp, approach: approach, finishing: finishing, key: h.chargeKey, charge: h.charge, ang: h.ang, vx: h.vx, vy: h.vy };
-          if (d < TIP_R && ((sp > 0.26 && approach > 0.08) || finishing)) {
+          if (fingerLive(h, "thumb") && d < TIP_R && ((sp > 0.26 && approach > 0.08) || finishing)) {
             offer(5, thumbKey, 0.2, {
               kind: "thumb", by: pi, hand: hi, foot: null, finger: "thumb",
               victim: 1 - pi, vhand: ei, vfinger: "thumb", vfoot: null,
@@ -653,7 +727,7 @@
               victim: 1 - pi, vhand: ei, vfinger: null, vfoot: null, x: e.x, y: e.y
             });
           }
-          if (h.blockT <= 0) {
+          if (h.blockT <= 0 && fingerLive(h, "ring")) {
             var theirTips = allTips(e);
             var tn;
             for (tn = 0; tn < TIP_NAMES.length; tn++) {
@@ -791,16 +865,61 @@
     if (view.land) return x < view.w / 2 ? 0 : 1;
     return y < view.h / 2 ? 1 : 0;
   }
-  function handFor(pi, x) {
-    var p = G.players[pi];
+  function touchCap(pi) {
+    if (!G) return 0;
+    if (G.ai) return pi === 0 ? 10 : 0;
+    return 5;
+  }
+  function touchCount(pi) {
+    var n = 0, id;
+    for (id in pointers) if (pointers[id].player === pi) n++;
+    return n;
+  }
+  function normPoint(px, py) {
+    return {
+      x: clamp((px - view.ox) / view.u, 0.05, 0.95),
+      y: clamp((py - view.oy) / view.u, 0.05, 0.95)
+    };
+  }
+  function emptyHand(pi, x) {
+    var hands = G.players[pi].hands;
     var left;
     if (!view.land && pi === 1) left = x >= view.w / 2;
     else if (view.land) left = x < (pi === 0 ? view.w * 0.25 : view.w * 0.75);
     else left = x < view.w / 2;
     var idx = left ? 0 : 1;
-    if (p.hands[idx].pointer != null) idx = 1 - idx;
-    if (p.hands[idx].pointer != null) return -1;
+    if (hands[idx].mover) idx = 1 - idx;
+    if (hands[idx].mover) return -1;
     return idx;
+  }
+  function assignTouch(pi, px, py, id) {
+    if (touchCount(pi) >= touchCap(pi)) { G.refused = (G.refused || 0) + 1; return false; }
+    var n = normPoint(px, py);
+    var hands = G.players[pi].hands;
+    var best = -1, bd = 0.36, hi;
+    for (hi = 0; hi < 2; hi++) {
+      var hand = hands[hi];
+      if (!hand.mover) continue;
+      if (fingerCount(hand) >= 5) continue;
+      var d = hypot(hand.x - n.x, hand.y - n.y);
+      if (d < bd) { bd = d; best = hi; }
+    }
+    if (best < 0) best = emptyHand(pi, px);
+    if (best < 0) { G.refused = (G.refused || 0) + 1; return false; }
+    var h = hands[best];
+    var slot = null, s;
+    for (s = 0; s < TIP_NAMES.length; s++) if (!h.fingers[TIP_NAMES[s]]) { slot = TIP_NAMES[s]; break; }
+    if (!slot) { G.refused = (G.refused || 0) + 1; return false; }
+    h.fingers[slot] = { x: n.x, y: n.y };
+    if (!h.mover) {
+      h.mover = String(id);
+      h.aiming = true;
+      var palm = palmFor(slot, h.ang, n);
+      h.tx = palm.x;
+      h.ty = palm.y;
+    }
+    pointers[id] = { player: pi, hand: best, finger: slot };
+    return true;
   }
   function hitButton(x, y) {
     for (var i = buttons.length - 1; i >= 0; i--) {
@@ -818,14 +937,7 @@
     var who = playerAt(p.x, p.y);
     if (who < 0) return;
     if (G.ai && who === 1) return;
-    var hi = handFor(who, p.x);
-    if (hi < 0) return;
-    var n = { x: clamp((p.x - view.ox) / view.u, 0.05, 0.95), y: clamp((p.y - view.oy) / view.u, 0.05, 0.95) };
-    var h = G.players[who].hands[hi];
-    h.pointer = e.pointerId;
-    h.aiming = true;
-    h.tx = n.x; h.ty = n.y;
-    pointers[e.pointerId] = { player: who, hand: hi };
+    if (!assignTouch(who, p.x, p.y, e.pointerId)) return;
     try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
     try { if (window.MLPAudio) MLPAudio.unlock(); } catch (err) {}
   }
@@ -835,17 +947,33 @@
     if (!rec) return;
     e.preventDefault();
     var p = localPoint(e);
+    var n = normPoint(p.x, p.y);
     var h = G.players[rec.player].hands[rec.hand];
-    h.tx = clamp((p.x - view.ox) / view.u, 0.05, 0.95);
-    h.ty = clamp((p.y - view.oy) / view.u, 0.05, 0.95);
-    h.aiming = true;
+    if (h.fingers[rec.finger]) { h.fingers[rec.finger].x = n.x; h.fingers[rec.finger].y = n.y; }
+    if (String(h.mover) === String(e.pointerId)) {
+      var palm = palmFor(rec.finger, h.ang, n);
+      h.tx = palm.x;
+      h.ty = palm.y;
+      h.aiming = true;
+    }
   }
   function onUp(e) {
     var rec = pointers[e.pointerId];
     if (!rec || !G) return;
     var h = G.players[rec.player].hands[rec.hand];
-    h.pointer = null;
-    h.aiming = false;
+    h.fingers[rec.finger] = null;
+    if (String(h.mover) === String(e.pointerId)) {
+      h.mover = null;
+      h.aiming = false;
+      var next = null, id;
+      for (id in pointers) {
+        if (pointers[id] !== rec && pointers[id].player === rec.player && pointers[id].hand === rec.hand) { next = id; break; }
+      }
+      if (next != null) {
+        h.mover = next;
+        h.aiming = true;
+      }
+    }
     delete pointers[e.pointerId];
   }
 
@@ -932,6 +1060,19 @@
     ctx.fillStyle = band;
     rr(-0.42, 0.42, 0.84, 0.16, 0.06); ctx.fill();
     ctx.restore();
+    if (!hand.auto) {
+      TIP_NAMES.forEach(function (n) {
+        if (!hand.fingers || !hand.fingers[n]) return;
+        var tip = hand.fingers[n];
+        ctx.beginPath();
+        ctx.arc(X(tip.x), Y(tip.y), n === "thumb" ? 11 : 8, 0, 7);
+        ctx.fillStyle = n === "thumb" ? "#8A5A00" : "#1B4F3C";
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = "#FFFFFF";
+        ctx.stroke();
+      });
+    }
   }
 
   function drawFoot(f, pi, covered) {
@@ -963,7 +1104,8 @@
     ctx.fillStyle = stam < 25 ? "#8A5A00" : "#1B4F3C"; ctx.fill();
   }
 
-  function drawHud(pi, box, flip) {
+  function drawHud(pi, box, flip, opt) {
+    opt = opt || {};
     var p = G.players[pi];
     ctx.save();
     if (flip) {
@@ -973,16 +1115,18 @@
     }
     ctx.fillStyle = "#E7F2EB";
     ctx.fillRect(box.x, box.y, box.w, box.h);
-    var endX = box.x + box.w - 56;
-    var endY = box.y + Math.max(8, (box.h - 48) / 2);
-    if (flip) {
-      var vx = box.x + (box.w - (endX - box.x) - 48);
-      var vy = box.y + (box.h - (endY - box.y) - 48);
-      buttons.push({ x: vx, y: vy, w: 48, h: 48, fn: endMatch });
-    } else buttons.push({ x: endX, y: endY, w: 48, h: 48, fn: endMatch });
-    rr(endX, endY, 48, 48, 12);
-    ctx.fillStyle = "#1B4F3C"; ctx.fill();
-    txt("End", endX + 24, endY + 24, 16, "#FFFFFF", "center");
+    if (opt.end !== false) {
+      var endX = box.x + box.w - 56;
+      var endY = box.y + Math.max(8, (box.h - 48) / 2);
+      if (flip) {
+        var vx = box.x + (box.w - (endX - box.x) - 48);
+        var vy = box.y + (box.h - (endY - box.y) - 48);
+        buttons.push({ x: vx, y: vy, w: 48, h: 48, fn: endMatch });
+      } else buttons.push({ x: endX, y: endY, w: 48, h: 48, fn: endMatch });
+      rr(endX, endY, 48, 48, 12);
+      ctx.fillStyle = "#1B4F3C"; ctx.fill();
+      txt("End", endX + 24, endY + 24, 16, "#FFFFFF", "center");
+    }
     txt(p.name, box.x + 12, box.y + 22, 16, "#10281C", "left");
     txt(fmtTime(G.time), box.x + (box.w > 220 ? 148 : 12), box.y + (box.w > 220 ? 22 : 118), 15, "#1B4F3C", "left");
     txt(String(Math.floor(p.score)), box.x + 12, box.y + 48, 28, "#1B4F3C", "left");
@@ -998,7 +1142,9 @@
     txt("R", box.x + (wide ? 40 + gripW : 12), box.y + (wide ? 78 : 98), 12, "#10281C", "left");
     drawGrip(box.x + (wide ? 56 + gripW : 28), box.y + (wide ? 73 : 93), gripW, p.hands[1].stam);
     var controlY = view.land ? box.y + 128 : box.y + box.h - 18;
-    txt(pi === 0 ? "You" : "Them", box.x + 12, controlY - 2, 11, "#10281C", "left");
+    var cap = G.ai ? 10 : 5;
+    var fingerY = view.land ? box.y + 156 : box.y + box.h - 42;
+    if (!(G.ai && pi === 1)) txt("Fingers " + touchCount(pi) + "/" + cap, box.x + 12, fingerY, 15, "#10281C", "left");
     var cw = Math.min(140, box.w - 56);
     var cx = box.x + 44;
     rr(cx, controlY - 6, cw, 12, 6);
@@ -1167,7 +1313,7 @@
     shepherd(view.w / 2 - 34, titleY + (land ? 52 : 68), land ? 28 : 36, "kenai");
     txt("Bear", view.w / 2 + 8, titleY + (land ? 36 : 48), 13, "#10281C", "left");
     txt("Kenai", view.w / 2 + 8, titleY + (land ? 54 : 70), 13, "#10281C", "left");
-    var help = "Score three ways, each by how long you hold it: their thumb, one whole foot, or a ring closed around a hand. Cover both feet and the round is yours.";
+    var help = "First finger moves a hand. The next fingers are its thumb, index, middle, ring, and pinky. A ring scores only with all five down. Lift them and the hold lets go. Both feet wins the match.";
     var hy = land ? 96 : 130;
     wrap(help, 16, hy, view.w - 32, land ? 15 : 16, "#10281C");
     var labels = [
@@ -1189,7 +1335,7 @@
     var by = land ? view.h - 60 : top + labels.length * (bh + 8) + 6;
     button((view.w - Math.min(bw, 200)) / 2, Math.min(by, view.h - 60), Math.min(bw, 200), 48, "Back", endMatch);
     if (!land) {
-      var jobs = [["Thumb", "4 a second, climbs to x4."], ["Index", "Pry a thumb or a ring on green."], ["Middle", "Leads the wrap. Ring shuts faster."], ["Ring", "Block, and it closes a wrap."], ["Pinky", "Whole foot. 3 a second, up to x3."], ["Both feet", "Together, the round is over."]];
+      var jobs = [["Thumb", "Real thumb. 4/sec, up to x4."], ["Index", "Pry on the green window."], ["Middle", "One of the five in a ring."], ["Ring", "Block with where it really is."], ["Pinky", "Helps cover a whole foot."], ["Both feet", "Wins the match at once."]];
       var cardY = Math.min(by, view.h - 60) + 60;
       var cardH = view.h - cardY - 12;
       if (cardH > 150) {
@@ -1219,16 +1365,17 @@
   }
 
   function drawOverlayCard(title, lines) {
-    var w = Math.min(view.w - 24, 420), h = Math.min(view.h - 24, 280);
-    var x = (view.w - w) / 2, y = (view.h - h) / 2;
+    var w = Math.min(view.w - 32, 400);
+    var h = 36 + 28 + lines.length * 26 + 16 + 56;
+    var x = (view.w - w) / 2, y = Math.max(12, (view.h - h) / 2);
     panel(x, y, w, h);
-    txt(title, x + w / 2, y + 32, 22, "#10281C", "center");
-    lines.forEach(function (line, i) { txt(line, x + w / 2, y + 68 + i * 24, 16, "#10281C", "center"); });
-    button(x + 16, y + h - 64, (w - 44) / 2, 48, phase === "match" ? "Again" : "Next", function () {
+    txt(title, x + w / 2, y + 28, 22, "#10281C", "center");
+    lines.forEach(function (line, i) { txt(line, x + w / 2, y + 58 + i * 26, 16, "#10281C", "center"); });
+    button(x + 16, y + h - 60, (w - 44) / 2, 48, phase === "match" ? "Again" : "Next", function () {
       if (phase === "match") start(G.mode, { round: G.roundLen, count: G.countLen, banner: G.banner });
       else advance();
     });
-    button(x + w / 2 + 6, y + h - 64, (w - 44) / 2, 48, "Menu", function () { G = null; phase = "menu"; say("Bear", "Two hands. Pin a thumb, or take both feet.", true); });
+    button(x + w / 2 + 6, y + h - 60, (w - 44) / 2, 48, "Menu", function () { G = null; phase = "menu"; say("Bear", "First finger moves the hand. Five fingers close a ring.", true); });
   }
 
   function draw() {
@@ -1242,22 +1389,26 @@
       ctx.fillStyle = "#E7F2EB";
       ctx.fillRect(0, 0, view.w, view.h);
       drawWorld();
+      var vs = !!(G && G.ai);
       if (view.land) {
-        drawHud(0, { x: 0, y: 0, w: view.side, h: view.h }, false);
-        drawHud(1, { x: view.w - view.side, y: 0, w: view.side, h: view.h }, false);
+        drawHud(0, { x: 0, y: 0, w: view.side, h: view.h }, false, { end: true });
+        drawHud(1, { x: view.w - view.side, y: 0, w: view.side, h: view.h }, false, { end: !vs });
+        drawCallout(view.ox + view.u / 2, view.oy + 28, false);
+      } else if (vs) {
+        drawHud(1, { x: 0, y: 0, w: view.w, h: view.hud }, false, { end: false });
+        drawHud(0, { x: 0, y: view.h - view.hud, w: view.w, h: view.hud }, false, { end: true });
+        drawCallout(view.w / 2, view.oy + 24, false);
+        var gapAi = (view.h - view.hud) - (view.oy + view.u);
+        if (gapAi > 40) drawHosts(view.w / 2, view.oy + view.u + gapAi * 0.45, false);
       } else {
-        drawHud(1, { x: 0, y: 0, w: view.w, h: view.hud }, true);
-        drawHud(0, { x: 0, y: view.h - view.hud, w: view.w, h: view.hud }, false);
-      }
-      if (!view.land) {
+        drawHud(1, { x: 0, y: 0, w: view.w, h: view.hud }, true, { end: true });
+        drawHud(0, { x: 0, y: view.h - view.hud, w: view.w, h: view.hud }, false, { end: true });
         var gap = view.oy - view.hud;
         if (gap > 50) drawHosts(view.w / 2, view.hud + gap * 0.42, true);
         drawCallout(view.w / 2, view.oy - 22, true);
         drawCallout(view.w / 2, view.oy + view.u + 22, false);
         var gap2 = (view.h - view.hud) - (view.oy + view.u);
         if (gap2 > 50) drawHosts(view.w / 2, view.oy + view.u + gap2 * 0.55, false);
-      } else {
-        drawCallout(view.ox + view.u / 2, view.oy + 28, false);
       }
       if (phase === "count") {
         panel(view.w / 2 - 70, view.h / 2 - 50, 140, 100);
@@ -1324,8 +1475,11 @@
       line: msg.who + ": " + msg.text,
       trace: G.trace || null,
       seen: G.ai ? Object.assign({}, G.ai.seen) : {},
+      refused: G.refused || 0,
+      fingers: [touchCount(0), touchCount(1)],
+      cap: G.ai ? [10, 0] : [5, 5],
       holds: G.holds.map(function (h) { return { kind: h.kind, by: h.by, finger: h.finger, mult: h.mult || multOf(h), t: h.t, vfoot: h.vfoot }; }),
-      hands: G.players.map(function (p) { return p.hands.map(function (h) { return { x: h.x, y: h.y, pointer: h.pointer != null, stam: h.stam }; }); }),
+      hands: G.players.map(function (p) { return p.hands.map(function (h) { return { x: h.x, y: h.y, mover: h.mover != null, fingers: fingerCount(h), stam: h.stam }; }); }),
       feet: G.players.map(function (p) { return p.feet.map(function (f) { return { x: f.x, y: f.y }; }); })
     };
   }
@@ -1366,7 +1520,7 @@
       });
     };
     add();
-    if (typeof loadAsset === "function") loadAsset("mode_thumbjitsu", "assets/modes/thumbjitsu.webp?v=0-6-9");
+    if (typeof loadAsset === "function") loadAsset("mode_thumbjitsu", "assets/modes/thumbjitsu.webp?v=0-6-10");
     window.__thumb = {
       open: openMenu,
       close: closeMatch,
@@ -1389,6 +1543,8 @@
           A.ang = 0;
           var off = rot(TIPS.thumb.x * HAND, TIPS.thumb.y * HAND, 0);
           A.x = tb.x - off.x; A.y = tb.y - off.y;
+          A.auto = true;
+          B.auto = true;
           A.aiming = true;
           A.tx = A.x; A.ty = A.y;
           var dx = tb.x - A.x, dy = tb.y - A.y, len = Math.hypot(dx, dy) || 1;
@@ -1411,8 +1567,8 @@
           start("2p", { skip: true, script: true, round: 50 });
           G.players[1].feet[0].x = 0.35; G.players[1].feet[0].y = 0.42;
           G.players[1].feet[1].x = 0.66; G.players[1].feet[1].y = 0.42;
-          G.players[0].hands[0].x = 0.35; G.players[0].hands[0].y = 0.42;
-          G.players[0].hands[1].x = 0.66; G.players[0].hands[1].y = 0.42;
+          G.players[0].hands[0].x = 0.35; G.players[0].hands[0].y = 0.42; G.players[0].hands[0].auto = true;
+          G.players[0].hands[1].x = 0.66; G.players[0].hands[1].y = 0.42; G.players[0].hands[1].auto = true;
           var i;
           for (i = 0; i < 40; i++) step(0.02);
           G.freeze = true;
@@ -1422,15 +1578,54 @@
           start("2p", { skip: true, script: true, round: 50 });
           var A = G.players[0].hands[0];
           var B = G.players[1].hands[0];
-          A.ang = 0; A.x = 0.5; A.y = 0.58; A.vx = 0; A.vy = 0;
-          A.aiming = true; A.tx = A.x; A.ty = A.y;
-          B.ang = Math.PI; B.x = 0.5; B.y = 0.50; B.vx = 0; B.vy = 0;
+          B.ang = Math.PI; B.x = 0.52; B.y = 0.48;
+          A.ang = 0; A.x = 0.52; A.y = 0.56; A.vx = 0; A.vy = 0;
+          A.aiming = true; A.tx = A.x; A.ty = A.y; A.mover = "dbg";
+          TIP_NAMES.forEach(function (n, i) {
+            var a = -Math.PI / 2 + i * (Math.PI * 2 / 5);
+            A.fingers[n] = { x: B.x + Math.cos(a) * 0.05, y: B.y + Math.sin(a) * 0.05 };
+          });
           var i;
-          for (i = 0; i < 45; i++) step(0.02);
+          for (i = 0; i < 40; i++) step(0.02);
           G.freeze = true;
           var shot = snap();
           shot.wrap = wrapOf(A, B);
+          shot.live = fingerCount(A);
           return shot;
+        },
+        lift: function () {
+          var A = G.players[0].hands[0];
+          var before = G.players[0].score;
+          TIP_NAMES.forEach(function (n) { A.fingers[n] = null; });
+          A.mover = null;
+          A.aiming = false;
+          A.auto = false;
+          G.freeze = false;
+          step(0.08);
+          var shot = snap();
+          shot.rose = G.players[0].score - before;
+          G.freeze = true;
+          return shot;
+        },
+        idle: function (mode) {
+          start(mode, { skip: true, round: 8, count: 0, banner: 0.02, seed: 5 });
+          var i = 0;
+          while (phase !== "match" && i < 700) { step(0.05); i++; }
+          G.freeze = true;
+          var shot = snap();
+          shot.steps = i;
+          return shot;
+        },
+        bouts: function (mode, n) {
+          var wins = 0, i, k;
+          for (i = 0; i < n; i++) {
+            start(mode, { skip: true, round: 6, count: 0, banner: 0.02, seed: 11 + i * 19 });
+            k = 0;
+            while (phase !== "match" && k < 500) { scriptHuman(); step(0.05); k++; }
+            if (G && G.winner === 1) wins++;
+          }
+          G.freeze = true;
+          return { wins: wins, n: n };
         },
         plans: function (mode) {
           start(mode, { skip: true, script: false, round: 30 });

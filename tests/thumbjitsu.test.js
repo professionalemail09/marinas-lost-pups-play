@@ -42,7 +42,7 @@ async function boot(page) {
   const errors = [];
   try {
     const context = await browser.newContext({
-      viewport: { width: 390, height: 844 },
+      viewport: { width: 412, height: 915 },
       hasTouch: true,
       isMobile: true,
       deviceScaleFactor: 1
@@ -80,7 +80,7 @@ async function boot(page) {
     });
     assert(buttons.length >= 5, "menu has the match buttons");
     buttons.forEach((b) => {
-      assert(b.w >= 44 && b.h >= 44, "tap target " + JSON.stringify(b));
+      assert(b.w >= 48 && b.h >= 48, "tap target " + JSON.stringify(b));
     });
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     assert(overflow <= 1, "portrait overflow " + overflow);
@@ -96,13 +96,18 @@ async function boot(page) {
     const ring = await page.evaluate(() => __thumb.debug.encircle());
     const enc = (ring.holds || []).find((h) => h.kind === "encircle");
     assert(enc, "a closed ring around a hand scores: " + JSON.stringify({ holds: ring.holds, wrap: ring.wrap }));
+    assert(ring.live === 5, "the ring used five live fingers");
     assert(ring.scores[0] > 0.4, "encircle scores by time held, got " + ring.scores[0]);
     assert(!(ring.holds || []).some((h) => h.kind === "grab"), "grabs do not score");
     await page.waitForTimeout(120);
     await page.screenshot({ path: path.join(shots, "thumbjitsu-encircle.png") });
 
+    const lifted = await page.evaluate(() => __thumb.debug.lift());
+    assert(!(lifted.holds || []).some((h) => h.kind === "encircle" && h.by === 0), "lifting the fingers releases the ring: " + JSON.stringify(lifted.holds));
+    assert(lifted.rose <= 0, "an untouched hand does not keep scoring");
+
     const feet = await page.evaluate(() => __thumb.debug.bothFeet());
-    assert(feet.phase === "round" && feet.reason === "feet" && feet.winner === 0, "both feet is an instant round win: " + JSON.stringify({ phase: feet.phase, reason: feet.reason, winner: feet.winner, holds: feet.holds }));
+    assert(feet.phase === "match" && feet.reason === "feet" && feet.winner === 0, "both feet wins the match: " + JSON.stringify({ phase: feet.phase, reason: feet.reason, winner: feet.winner }));
     await page.screenshot({ path: path.join(shots, "thumbjitsu-both-feet.png") });
 
     for (const mode of ["easy", "normal", "hard"]) {
@@ -112,29 +117,37 @@ async function boot(page) {
       });
     }
 
+    for (const mode of ["easy", "normal", "hard"]) {
+      const idle = await page.evaluate((m) => __thumb.debug.idle(m), mode);
+      assert(idle.phase === "match" && idle.winner === 1 && idle.scores[0] === 0, mode + " should beat an idle player " + JSON.stringify(idle));
+    }
+    const easyB = await page.evaluate(() => __thumb.debug.bouts("easy", 4));
+    const hardB = await page.evaluate(() => __thumb.debug.bouts("hard", 4));
+    assert(hardB.wins >= easyB.wins, "Hard won " + hardB.wins + " of " + hardB.n + ", Easy won " + easyB.wins);
+
     await page.evaluate(() => __thumb.start("2p", { skip: true, round: 50 }));
     await page.waitForTimeout(200);
-    const homes = await page.evaluate(() => __thumb.homes());
     const session = await context.newCDPSession(page);
-    const pts = [
-      { x: 70, y: 700, id: 1 },
-      { x: 300, y: 720, id: 2 },
-      { x: 80, y: 140, id: 3 },
-      { x: 310, y: 150, id: 4 }
-    ];
-    await session.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: pts });
-    await page.waitForTimeout(200);
-    const moved = pts.map((p, i) => ({ x: i < 2 ? 180 : 200, y: i < 2 ? 460 : 380, id: p.id }));
-    for (let i = 0; i < 6; i++) {
-      await session.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: moved });
-      await page.waitForTimeout(50);
+    function cluster(x, y, n, id0) {
+      const pts = [];
+      for (let i = 0; i < n; i++) pts.push({ x: x + (i % 3) * 12, y: y + Math.floor(i / 3) * 14, id: id0 + i });
+      return pts;
     }
+    const ten = cluster(180, 700, 5, 1).concat(cluster(180, 160, 5, 6));
+    await session.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: ten });
     await page.waitForTimeout(250);
-    const two = await page.evaluate(() => __thumb.snap());
-    const pointers = two.hands.flat().filter((h) => h.pointer).length;
-    assert(pointers === 4, "both players' hands are tracking, got " + pointers + " " + JSON.stringify(two.hands));
-    assert(two.hands[0].some((h) => h.y < 0.72), "player 1 hands moved up from home " + JSON.stringify(two.hands[0]) + " touches " + JSON.stringify(moved));
+    const tenSnap = await page.evaluate(() => __thumb.snap());
+    assert(tenSnap.fingers[0] === 5 && tenSnap.fingers[1] === 5, "five fingers each, got " + JSON.stringify(tenSnap.fingers));
     await page.screenshot({ path: path.join(shots, "thumbjitsu-2p-action.png") });
+    await session.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await page.evaluate(() => __thumb.start("2p", { skip: true, round: 50 }));
+    await page.waitForTimeout(150);
+    const six = cluster(180, 720, 6, 1);
+    await session.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: six });
+    await page.waitForTimeout(200);
+    const sixSnap = await page.evaluate(() => __thumb.snap());
+    assert(sixSnap.fingers[0] === 5, "a sixth finger is refused, got " + sixSnap.fingers[0]);
+    assert(sixSnap.refused >= 1, "the extra touch was counted as refused");
     await session.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
 
     await page.setViewportSize({ width: 844, height: 390 });
@@ -142,10 +155,10 @@ async function boot(page) {
     const landOverflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     assert(landOverflow <= 1, "landscape overflow " + landOverflow);
     const landButtons = await page.evaluate(() => __thumb.buttons());
-    landButtons.forEach((b) => assert(b.w >= 44 && b.h >= 44, "landscape target " + JSON.stringify(b)));
+    landButtons.forEach((b) => assert(b.w >= 48 && b.h >= 48, "landscape target " + JSON.stringify(b)));
     await page.screenshot({ path: path.join(shots, "thumbjitsu-landscape.png") });
 
-    await page.setViewportSize({ width: 390, height: 844 });
+    await page.setViewportSize({ width: 412, height: 915 });
     await page.evaluate(() => __thumb.start("hard", { skip: true, round: 50 }));
     await page.waitForTimeout(700);
     await page.screenshot({ path: path.join(shots, "thumbjitsu-vs-ai.png") });
@@ -161,15 +174,16 @@ async function boot(page) {
       }
       if (snap.phase === "match") {
         await page.screenshot({ path: path.join(shots, "thumbjitsu-results.png") });
-        assert(snap.wins[0] + snap.wins[1] >= 2, "best of 3 reached a result " + JSON.stringify(snap.wins));
+        assert(snap.wins[0] + snap.wins[1] >= 1 || snap.reason === "feet", "the match reached a result " + JSON.stringify(snap));
         break;
       }
       await page.waitForTimeout(200);
     }
     const finalSnap = await page.evaluate(() => __thumb.snap());
-    assert(finalSnap.phase === "match", "full versus-AI match did not finish: " + finalSnap.phase);
-    assert(sawRound, "a round result was shown");
+    assert(finalSnap.phase === "match", "full versus-AI match did not finish: " + finalSnap.phase + " " + finalSnap.reason);
     assert(!errors.length, errors.join("\n"));
+    const loopErr = await page.evaluate(() => window.__thumbErr || "");
+    assert(!loopErr, loopErr);
     console.log("thumbjitsu ok", JSON.stringify({ tile, pin: pin.holds.map((h) => h.kind + " x" + h.mult.toFixed(2)), feet: feet.reason, wins: finalSnap.wins }));
   } finally {
     await browser.close();
