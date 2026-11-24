@@ -710,9 +710,112 @@ Birthday party:CAKE,CANDLES,BALLOON,PRESENTS|Shepherd breeds:GERMAN,AUSTRALIAN,B
     kenai:{head:[0.50,0.30,0.14],eye:[0.50,0.40,0.16],neck:[0.50,0.80,0.12],back:[0.50,0.84,0.16],glow:[0.50,0.86,0.14],paw:[0.50,0.94,0.12]}
   };
   var CROP={marina:{top:0.02,span:0.46},bear:{top:0,span:0.86},kenai:{top:0,span:0.86},marinaA:{top:0,span:0.86}};
+  // Measured on the source art. x,y are fractions of that image.
+  // scale is the feature width as a fraction of image width.
+  // rot is the eye-line angle in radians (canvas y grows downward).
+  var LAND={
+    bear:{
+      skull:{x:132/256,y:40/256},
+      head:{x:132/256,y:40/256,scale:96/256,rot:0},
+      eyeL:{x:105/256,y:88/256},
+      eyeR:{x:175/256,y:88/256},
+      eye:{x:140/256,y:88/256,scale:70/256,rot:0},
+      neck:{x:132/256,y:154/256,scale:76/256,rot:0},
+      shL:{x:56/256,y:176/256},
+      shR:{x:200/256,y:176/256}
+    },
+    kenai:{
+      skull:{x:124/256,y:72/256},
+      head:{x:124/256,y:72/256,scale:96/256,rot:Math.atan2(119-113,150-100)},
+      eyeL:{x:100/256,y:113/256},
+      eyeR:{x:150/256,y:119/256},
+      eye:{x:125/256,y:116/256,scale:50.4/256,rot:Math.atan2(119-113,150-100)},
+      neck:{x:124/256,y:192/256,scale:78/256,rot:Math.atan2(119-113,150-100)},
+      shL:{x:88/256,y:200/256},
+      shR:{x:188/256,y:206/256}
+    },
+    marina:{
+      skull:{x:286/576,y:54/768},
+      head:{x:286/576,y:54/768,scale:130/576,rot:Math.atan2(107-106,320-255)},
+      eyeL:{x:255/576,y:106/768},
+      eyeR:{x:320/576,y:107/768},
+      eye:{x:287.5/576,y:106.5/768,scale:65/576,rot:Math.atan2(107-106,320-255)},
+      neck:{x:286/576,y:192/768,scale:96/576,rot:Math.atan2(107-106,320-255)},
+      shL:{x:160/576,y:208/768},
+      shR:{x:416/576,y:208/768}
+    },
+    marinaA:{
+      skull:{x:130/256,y:34/256},
+      head:{x:130/256,y:34/256,scale:92/256,rot:0},
+      eyeL:{x:105/256,y:62/256},
+      eyeR:{x:155/256,y:62/256},
+      eye:{x:130/256,y:62/256,scale:50/256,rot:0},
+      neck:{x:130/256,y:128/256,scale:72/256,rot:0},
+      shL:{x:52/256,y:140/256},
+      shR:{x:204/256,y:140/256}
+    }
+  };
+  // Contact line of each hat, in units of hr above the drawing origin.
+  var HAT_SIT={crown:0.57,wizard:0.55,tricorn:0.72,helmet:1.06,cowboy:0.70,chef:0.57,viking:0.60,party:0.55,beanie:0.45,flower:0.63};
+  // Width of the part that sits on the skull, in units of hr.
+  var HAT_W={crown:1.7,wizard:1.9,tricorn:2.3,helmet:2.24,cowboy:2.4,chef:1.8,viking:1.6,party:1.4,beanie:1.8,flower:1.8};
+  // Distance from the glasses origin to each lens center, in units of hr.
+  var LENS={aviators:0.45,stars:0.38,hearts:0.38,goggles:0.525,monocle:0.38};
+  var NECK_W={bandana:1.4,spikes:1.5,bowtie:1.1,chain:1.4,scarf:1.6,neckcape:1.7};
+  var NECK_AT={bandana:2,spikes:4,bowtie:-2,chain:0,scarf:6,neckcape:0};
   var UNIT=20;
+  function cropSpec(kind){
+    var L=LAND[kind];
+    if(!L)return CROP[kind]||CROP.bear;
+    var top=Math.max(0, Math.min(L.skull.y, L.eyeL.y, L.eyeR.y)-0.10);
+    var bot=Math.min(1, Math.max(L.neck.y, L.shL.y, L.shR.y)+0.08);
+    return {top:top, span:Math.max(0.36, bot-top)};
+  }
+  function mapPt(p,box,src){
+    src=src||{x:0,y:0,w:1,h:1};
+    return {x:box.x+(p.x-src.x)/src.w*box.w, y:box.y+(p.y-src.y)/src.h*box.h};
+  }
+  function mapScale(frac,box,src){
+    src=src||{x:0,y:0,w:1,h:1};
+    return frac/src.w*box.w;
+  }
+  function placeWear(box,kind,wear,t,src){
+    var L=LAND[kind];
+    if(!L||!wear)return;
+    src=src||{x:0,y:0,w:1,h:1};
+    withRaw(function(){
+      if(wear.head){
+        var p=mapPt(L.skull,box,src);
+        var hr=Math.max(6, mapScale(L.head.scale,box,src)/(HAT_W[wear.head]||1.8));
+        ctx.save();
+        ctx.translate(p.x,p.y);
+        ctx.rotate(L.head.rot||0);
+        frontOf("head",wear.head,{hy:(HAT_SIT[wear.head]||0.6)*hr,hr:hr,eye:0,neck:hr},t||0);
+        ctx.restore();
+      }
+      if(wear.face){
+        var mid=mapPt(L.eye,box,src);
+        var spacing=mapScale(L.eye.scale,box,src);
+        var hr=Math.max(6, (spacing/2)/(LENS[wear.face]||0.4));
+        ctx.save();
+        ctx.translate(mid.x,mid.y);
+        ctx.rotate(L.eye.rot||0);
+        frontOf("face",wear.face,{hy:0,hr:hr,eye:0,neck:hr*1.4},t||0);
+        ctx.restore();
+      }
+      if(wear.neck){
+        var n=mapPt(L.neck,box,src);
+        var hr=Math.max(6, mapScale(L.neck.scale,box,src)/(NECK_W[wear.neck]||1.4));
+        ctx.save();
+        ctx.translate(n.x,n.y);
+        ctx.rotate(L.neck.rot||0);
+        frontOf("neck",wear.neck,{hy:0,hr:hr,eye:0,neck:NECK_AT[wear.neck]||0},t||0);
+        ctx.restore();
+      }
+    });
+  }
   function cropRect(im,dw,dh,kind){
-    var spec=CROP[kind]||CROP.bear;
+    var spec=cropSpec(kind);
     var sw=im.naturalWidth, sh=im.naturalHeight;
     var sy=sh*spec.top, sH=sh*spec.span, sW=sw, sx=0;
     var destA=dw/Math.max(1,dh), srcA=sW/Math.max(1,sH);
@@ -780,12 +883,12 @@ Birthday party:CAKE,CANDLES,BALLOON,PRESENTS|Shepherd breeds:GERMAN,AUSTRALIAN,B
     return box.y+box.h*(a?a[1]:0.55);
   }
   function wingPath(rootX,tipX,y){
-    var len=tipX-rootX, lift=Math.max(16,Math.abs(len)*0.95);
+    var len=tipX-rootX, lift=Math.max(12,Math.abs(len)*0.38);
     ctx.beginPath();
     ctx.moveTo(rootX,y);
-    ctx.quadraticCurveTo(rootX+len*0.25,y-lift,rootX+len*0.95,y-lift*0.35);
-    ctx.quadraticCurveTo(rootX+len*0.8,y-lift*0.02,rootX+len*0.45,y+lift*0.22);
-    ctx.quadraticCurveTo(rootX+len*0.18,y+lift*0.08,rootX,y+5);
+    ctx.quadraticCurveTo(rootX+len*0.28,y-lift,rootX+len*0.96,y-lift*0.45);
+    ctx.quadraticCurveTo(rootX+len*0.78,y+lift*0.05,rootX+len*0.42,y+lift*0.22);
+    ctx.quadraticCurveTo(rootX+len*0.16,y+lift*0.06,rootX,y+4);
     ctx.closePath();
   }
   function drawWing(rootX,tipX,y){
@@ -814,42 +917,63 @@ Birthday party:CAKE,CANDLES,BALLOON,PRESENTS|Shepherd breeds:GERMAN,AUSTRALIAN,B
     if(mlp)mlp.raw=(mlp.raw|0)+1;
     try{draw()}finally{if(mlp)mlp.raw--}
   }
-  function drawPortraitBack(box,id,t,kind,frame){
+  function drawPortraitBack(box,id,t,kind,frame,src){
     if(!id||id==="none"||!box)return;
-    withRaw(function(){drawPortraitBackRaw(box,id,t,kind,frame)});
+    withRaw(function(){drawPortraitBackRaw(box,id,t,kind,frame,src)});
   }
-  function drawPortraitBackRaw(box,id,t,kind,frame){
-    var y=shoulderY(box,kind);
-    [-1,1].forEach(function(d){
-      var s=sideSpan(box,frame,d);
-      if(id==="wings")drawWing(s.root,s.tip,y);
-      else if(id==="hero"){
-        var drop=Math.max(20, box.h*0.26);
+  function shoulderPair(box,kind,frame,src){
+    var L=LAND[kind];
+    var f=frame||box;
+    if(!L){
+      var y=shoulderY(box,kind);
+      return {l:{x:sideSpan(box,frame,-1).root,y:y}, r:{x:sideSpan(box,frame,1).root,y:y}, f:f};
+    }
+    return {l:mapPt(L.shL,box,src), r:mapPt(L.shR,box,src), f:f};
+  }
+  function drawPortraitBackRaw(box,id,t,kind,frame,src){
+    src=src||{x:0,y:0,w:1,h:1};
+    var pair=shoulderPair(box,kind,frame,src);
+    var sl=pair.l, sr=pair.r, f=pair.f;
+    if(id==="wings"){
+      drawWing(sl.x, f.x+4, sl.y);
+      drawWing(sr.x, f.x+f.w-4, sr.y);
+      return;
+    }
+    if(id==="hero"){
+      [[sl, f.x+4],[sr, f.x+f.w-4]].forEach(function(side){
+        var root=side[0], tip=side[1];
+        var room=f.y+f.h-root.y-6;
+        var drop=Math.max(16, Math.min(room, box.h*0.28));
         ctx.beginPath();
-        ctx.moveTo(s.root,y-2);
-        ctx.quadraticCurveTo((s.root+s.tip)/2,y-6,s.tip,y+4);
-        ctx.lineTo(s.tip,y+drop);
-        ctx.quadraticCurveTo((s.root+s.tip)/2,y+drop+6,s.root,y+drop*0.72);
+        ctx.moveTo(root.x, root.y);
+        ctx.quadraticCurveTo((root.x+tip)/2, root.y-4, tip, root.y+8);
+        ctx.lineTo(tip, root.y+drop);
+        ctx.quadraticCurveTo((root.x+tip)/2, root.y+drop+4, root.x, root.y+drop*0.42);
         ctx.closePath();
         inked("#E23B4A");
-      }      else if(id==="jetpack"||id==="pack"){
-        var span=Math.abs(s.tip-s.root);
-        var w=Math.max(12,Math.min(18,span*0.78));
-        var h=Math.max(16,box.h*(id==="jetpack"?0.18:0.15));
-        var left=Math.min(s.root,s.tip), right=Math.max(s.root,s.tip);
-        var x=d<0?left:right-w;
-        pathRound(x, y-h*0.2, w, h, 4);
+      });
+      return;
+    }
+    if(id==="jetpack"||id==="pack"){
+      [[sl,-1],[sr,1]].forEach(function(side){
+        var root=side[0], d=side[1];
+        var w=Math.max(11, Math.min(18, box.w*0.14));
+        var h=Math.max(14, box.h*(id==="jetpack"?0.18:0.14));
+        var x=d<0?root.x-w*0.72:root.x-w*0.28;
+        x=Math.max(f.x+3, Math.min(f.x+f.w-w-3, x));
+        var y=Math.max(f.y+3, Math.min(f.y+f.h-h-3, root.y-h*0.35));
+        pathRound(x, y, w, h, 4);
         inked(id==="jetpack"?"#2C3A4F":"#C9892D");
         if(id==="jetpack"){
           ctx.fillStyle="#E2B15A";
-          ctx.fillRect(x+w*0.28, y+h*0.55, w*0.4, 5+Math.abs(Math.sin((t||0)*10+d))*4);
+          ctx.fillRect(x+w*0.28, y+h*0.62, w*0.42, 4+Math.abs(Math.sin((t||0)*10+d))*3);
         }else{
           ctx.fillStyle="#FBF7F1";
-          pathRound(x+w*0.22, y-h*0.05, w*0.52, h*0.28, 2);
+          pathRound(x+w*0.22, y+h*0.12, w*0.52, h*0.26, 2);
           ctx.fill();
         }
-      }
-    });
+      });
+    }
   }
   function drawHalo(box,id,t){
     if(!id||id==="none"||!box)return;
@@ -900,29 +1024,17 @@ Birthday party:CAKE,CANDLES,BALLOON,PRESENTS|Shepherd breeds:GERMAN,AUSTRALIAN,B
     }
     ctx.restore();
   }
-  function drawBack(box,wear,t,kind,frame){
+  function drawBack(box,wear,t,kind,frame,src){
     if(!wear||!box)return;
-    if(wear.back)drawPortraitBack(box,wear.back,t,kind,frame);
+    if(wear.back)drawPortraitBack(box,wear.back,t,kind,frame,src);
   }
-  function drawGear(box,wear,t,kind){
+  function drawGear(box,wear,t,kind,src){
     if(!wear||!wear.back||!box)return;
-    drawPortraitBack(box,wear.back,t,kind);
+    drawPortraitBack(box,wear.back,t,kind,null,src);
   }
-  function drawFront(box,wear,t,kind){
-    if(!wear||!box||!ANCH[kind])return;
-    var a=ANCH[kind];
-    if(wear.head){
-      var drop={chef:0.07,helmet:0.04,viking:0.03}[wear.head]||0;
-      paintAt(box,a.head[0],a.head[1]+drop,a.head[2],function(hr){
-        frontOf("head",wear.head,{hy:hr*0.72,hr:hr,eye:0,neck:hr},t||0);
-      });
-    }
-    if(wear.face)paintAt(box,a.eye[0],a.eye[1],a.eye[2],function(hr){
-      frontOf("face",wear.face,{hy:-hr,hr:hr,eye:0,neck:hr*1.3},t||0);
-    });
-    if(wear.neck)paintAt(box,a.neck[0],a.neck[1],a.neck[2],function(hr){
-      frontOf("neck",wear.neck,{hy:-hr,hr:hr,eye:-hr,neck:0},t||0);
-    });
+  function drawFront(box,wear,t,kind,src){
+    if(!wear||!box||!LAND[kind])return;
+    placeWear(box,kind,wear,t,src);
     if(wear.fx)drawHalo(box,wear.fx,t||0);
   }
   var root=typeof window==="undefined"?{}:window;
@@ -1074,21 +1186,16 @@ Birthday party:CAKE,CANDLES,BALLOON,PRESENTS|Shepherd breeds:GERMAN,AUSTRALIAN,B
         ctx.clip();
         if(face)coverCrop(face,bx,by,boxW,boxH,kind);
         else {ctx.fillStyle="#E7F2EB";ctx.fillRect(bx,by,boxW,boxH);}
-        if(cur==="back"&&id)drawPortraitBack(tile,id,t,kind);
+        var tileSrc=face?cropRect(face,boxW,boxH,kind):null;
+        if(cur==="back"&&id)drawPortraitBack(tile,id,t,kind,tile,tileSrc);
         if((cur==="fx"||cur==="glow")&&id)drawHalo(tile,id,t);
         ctx.restore();
         if(cur==="fur"){
           colorChip(bx+boxW/2, by+boxH*0.72, Math.min(boxW,boxH)*0.16, it[0]);
-        }else if(id&&face){
-          var slotName=cur==="head"?"head":cur==="face"?"eye":cur==="neck"?"neck":cur==="back"?"back":"glow";
-          var mp=mapped(kind,slotName,cropRect(face,boxW,boxH,kind));
-          if(cur==="head"){
-            var drop=({chef:0.07,helmet:0.04,viking:0.03}[id]||0);
-            var headCrop=cropRect(face,boxW,boxH,kind);
-            paintAt(tile,mp[0],mp[1]+drop/headCrop.h,mp[2],function(hr){frontOf("head",id,{hy:hr*0.72,hr:hr,eye:0,neck:hr},t);});
-          }
-          else if(cur==="face")paintAt(tile,mp[0],mp[1],mp[2],function(hr){frontOf("face",id,{hy:-hr,hr:hr,eye:0,neck:hr*1.3},t);});
-          else if(cur==="neck")paintAt(tile,mp[0],mp[1],mp[2],function(hr){frontOf("neck",id,{hy:-hr,hr:hr,eye:-hr,neck:0},t);});
+        }else if(id&&face&&(cur==="head"||cur==="face"||cur==="neck")){
+          var one={};
+          one[cur]=id;
+          drawFront(tile,one,t,kind,tileSrc);
         }
         api.txt(it[1],x+cellW/2,y+cellH-14,12,"#2B3550",null,"center",700);
         api.hit(x,Math.max(y,gridTop),cellW,Math.min(cellH,gridTop+viewH-Math.max(y,gridTop)),function(){
@@ -1102,8 +1209,10 @@ Birthday party:CAKE,CANDLES,BALLOON,PRESENTS|Shepherd breeds:GERMAN,AUSTRALIAN,B
       if(typeof api.nav=="function")api.nav();
     }
   };
-  root.__closet.dressBack=function(c,b,wear,t,kind){ctx=c;try{drawBack(b,wear,t,kind)}catch(e){}};
-  root.__closet.dressGear=function(c,b,wear,t,kind){ctx=c;try{drawGear(b,wear,t,kind)}catch(e){}};
-  root.__closet.dressFront=function(c,b,wear,t,kind){ctx=c;try{drawFront(b,wear,t,kind)}catch(e){}};
+  root.__closet.dressBack=function(c,b,wear,t,kind,frame,src){ctx=c;try{drawBack(b,wear,t,kind,frame,src)}catch(e){}};
+  root.__closet.dressGear=function(c,b,wear,t,kind,src){ctx=c;try{drawGear(b,wear,t,kind,src)}catch(e){}};
+  root.__closet.dressFront=function(c,b,wear,t,kind,src){ctx=c;try{drawFront(b,wear,t,kind,src)}catch(e){}};
   root.__closet.outfit=function(kind){var d=box();if(kind==="kenai")return d.kenai;if(kind==="marina"||kind==="marinaA")return d.marina;return d.pup;};
+  root.__closet.land=LAND;
+  root.__closet.crop=cropRect;
 })();
