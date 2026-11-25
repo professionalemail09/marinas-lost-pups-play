@@ -1,0 +1,110 @@
+{
+  "title": "Marina's Lost Pups \u2014 approved 80s Disney-style character art",
+  "approved": "2026-11-24",
+  "characters": {
+    "bear": "Black dog with tan points and a grey muzzle; smaller of the two dogs.",
+    "kenai": "Cream/wheat-tan dog with a dark muzzle and upright ears; the bigger dog.",
+    "marina": "Adult woman with brown wavy hair, wearing a brown bear onesie."
+  },
+  "notes": [
+    "Full portraits are max 768px on the long side (576x768 portraits, 768x576 trio).",
+    "Avatars are 256x256 square head/bust crops for UI and the host desk.",
+    "Prefer WebP. PNG files are lossless fallbacks for the 256px avatars only; full-size PNGs were omitted because lossless copies were ~700KB each and would exceed the 2MB budget.",
+    "Images contain no park names and no text.",
+    "Suggested repo paths: public/art/80s/ or src/assets/characters/80s/"
+  ],
+  "source_repo": "https://github.com/professionalemail09/marinas-lost-pups-play",
+  "files": [
+    {
+      "file": "bear-80s-avatar.png",
+      "kind": "avatar",
+      "format": "png",
+      "width": 256,
+      "height": 256,
+      "bytes": 102300,
+      "fallback": true
+    },
+    {
+      "file": "bear-80s-avatar.webp",
+      "kind": "avatar",
+      "format": "webp",
+      "width": 256,
+      "height": 256,
+      "bytes": 12322,
+      "fallback": false
+    },
+    {
+      "file": "bear-80s.webp",
+      "kind": "full",
+      "format": "webp",
+      "width": 576,
+      "height": 768,
+      "bytes": 52970,
+      "fallback": false
+    },
+    {
+      "file": "kenai-80s-avatar.png",
+      "kind": "avatar",
+      "format": "png",
+      "width": 256,
+      "height": 256,
+      "bytes": 104808,
+      "fallback": true
+    },
+    {
+      "file": "kenai-80s-avatar.webp",
+      "kind": "avatar",
+      "format": "webp",
+      "width": 256,
+      "height": 256,
+      "bytes": 12742,
+      "fallback": false
+    },
+    {
+      "file": "kenai-80s.webp",
+      "kind": "full",
+      "format": "webp",
+      "width": 576,
+      "height": 768,
+      "bytes": 71156,
+      "fallback": false
+    },
+    {
+      "file": "marina-80s-avatar.png",
+      "kind": "avatar",
+      "format": "png",
+      "width": 256,
+      "height": 256,
+      "bytes": 120826,
+      "fallback": true
+    },
+    {
+      "file": "marina-80s-avatar.webp",
+      "kind": "avatar",
+      "format": "webp",
+      "width": 256,
+      "height": 256,
+      "bytes": 19136,
+      "fallback": false
+    },
+    {
+      "file": "marina-80s.webp",
+      "kind": "full",
+      "format": "webp",
+      "width": 576,
+      "height": 768,
+      "bytes": 75444,
+      "fallback": false
+    },
+    {
+      "file": "trio-80s.webp",
+      "kind": "full",
+      "format": "webp",
+      "width": 768,
+      "height": 576,
+      "bytes": 75278,
+      "fallback": false
+    }
+  ],
+  "total_bytes": 646982
+}
