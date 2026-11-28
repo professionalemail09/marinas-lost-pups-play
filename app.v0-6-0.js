@@ -725,6 +725,7 @@ Birthday party:CAKE,CANDLES,BALLOON,PRESENTS|Shepherd breeds:GERMAN,AUSTRALIAN,B
       bust:1
     },
     kenai:{
+      ears:{x:121/256,y:8/256,w:148/256},
       head:{x:124/256,y:72/256,w:96/256,rot:Math.atan2(6,50)},
       eye:{x:125/256,y:116/256,w:50.4/256,rot:Math.atan2(6,50)},
       neck:{x:124/256,y:230/256,w:100/256,rot:Math.atan2(6,50)},
@@ -766,16 +767,51 @@ Birthday party:CAKE,CANDLES,BALLOON,PRESENTS|Shepherd breeds:GERMAN,AUSTRALIAN,B
     var rise=HAT_RISE[id]||1, coef=HAT_W[id]||1.8;
     return headW*rise/coef+3;
   }
+  function gearBounds(kind, slot, id){
+    var meta=window.__gearMeta&&window.__gearMeta[kind];
+    if(!meta||!id||!meta.items) return null;
+    var key=slot==="fx"&&id==="hearts"?"fxhearts":id;
+    var info=meta.items[key];
+    return info&&info.bounds||null;
+  }
   function layoutTile(im, tile, kind, slot, id){
     var L=LAND[kind];
-    if(L.ears&&(slot==="head"||slot==="face"||slot==="neck")){
+    if(slot==="head"||((slot==="back"||slot==="fx")&&gearBounds(kind, slot, id))){
+      var b=gearBounds(kind, slot, id);
+      var top, bot, left, right;
+      if(slot==="head"&&L.ears){
+        top=L.ears.y-0.09;
+        bot=Math.min(1, L.eye.y+0.30);
+        left=L.ears.x-L.ears.w/2-0.05;
+        right=L.ears.x+L.ears.w/2+0.05;
+      }else if(slot==="head"){
+        top=L.head.y-0.16;
+        bot=Math.min(1, L.eye.y+0.36);
+        left=L.head.x-L.head.w*1.4;
+        right=L.head.x+L.head.w*1.4;
+      }else{
+        top=0.15; bot=1; left=0; right=1;
+      }
+      if(b){
+        top=Math.min(top, b.t-0.05);
+        bot=Math.max(bot, b.b+0.04);
+        left=Math.min(left, b.l-0.04);
+        right=Math.max(right, b.r+0.04);
+      }
+      var pad=5;
+      var tw=Math.max(8, tile.w-pad*2), th=Math.max(8, tile.h-pad*2);
+      var spanW=Math.max(0.18, right-left), spanH=Math.max(0.18, bot-top);
+      var scale=Math.min(tw/(spanW*im.naturalWidth), th/(spanH*im.naturalHeight));
+      var dw=im.naturalWidth*scale, dh=im.naturalHeight*scale;
+      return {
+        x:tile.x+tile.w/2-((left+right)/2)*dw,
+        y:tile.y+tile.h/2-((top+bot)/2)*dh,
+        w:dw, h:dh
+      };
+    }
+    if(L.ears&&(slot==="face"||slot==="neck")){
       var top,bot,left,right;
-      if(slot==="head"){
-        top=Math.max(0, L.ears.y-0.04);
-        bot=Math.min(1, L.eye.y+0.22);
-        left=Math.max(0, L.ears.x-L.ears.w/2-0.03);
-        right=Math.min(1, L.ears.x+L.ears.w/2+0.03);
-      }else if(slot==="face"){
+      if(slot==="face"){
         top=Math.max(0, L.eye.y-0.16);
         bot=Math.min(1, L.eye.y+0.18);
         left=Math.max(0, L.eye.x-0.32);
@@ -1088,16 +1124,46 @@ Birthday party:CAKE,CANDLES,BALLOON,PRESENTS|Shepherd breeds:GERMAN,AUSTRALIAN,B
     }
     ctx.restore();
   }
+  function gearDest(box, kind){
+    var meta=window.__gearMeta&&window.__gearMeta[kind];
+    if(!meta) return null;
+    var sx=box.w/meta.pw, sy=box.h/meta.ph;
+    return {x:box.x-meta.ox*sx, y:box.y-meta.oy*sy, w:meta.w*sx, h:meta.h*sy, meta:meta};
+  }
+  function paintGear(box, kind, wear, pass){
+    var dest=gearDest(box, kind);
+    var pack=window.__art80&&window.__art80.gear&&window.__art80.gear[kind];
+    if(!dest||!pack||!wear) return false;
+    var drew=false;
+    ["head","face","neck","back","fx"].forEach(function(slot){
+      var id=wear[slot];
+      if(!id) return;
+      var key=slot==="fx"&&id==="hearts"?"fxhearts":id;
+      var info=dest.meta.items[key];
+      if(!info||info.pass!==pass) return;
+      drew=true;
+      if(info.hide) return;
+      var im=pack[key];
+      if(im&&im.complete&&im.naturalWidth) ctx.drawImage(im, dest.x, dest.y, dest.w, dest.h);
+    });
+    if(pass==="front"&&wear.head&&pack.ears&&pack.ears.complete&&pack.ears.naturalWidth){
+      ctx.drawImage(pack.ears, dest.x, dest.y, dest.w, dest.h);
+    }
+    return drew;
+  }
   function drawBack(box,wear,t,kind,frame,src){
     if(!wear||!box)return;
+    if(paintGear(box,kind,wear,"back")) return;
     if(wear.back)drawPortraitBack(box,wear.back,t,kind,frame,src);
   }
   function drawGear(box,wear,t,kind,src){
     if(!wear||!wear.back||!box)return;
+    if(window.__gearMeta&&window.__gearMeta[kind]) return;
     drawPortraitBack(box,wear.back,t,kind,null,src);
   }
   function drawFront(box,wear,t,kind,src){
     if(!wear||!box||!LAND[kind])return;
+    if(paintGear(box,kind,wear,"front")) return;
     placeWear(box,kind,wear,t,src);
     if(wear.fx)drawHalo(box,wear.fx,t||0);
   }
@@ -1251,9 +1317,9 @@ Birthday party:CAKE,CANDLES,BALLOON,PRESENTS|Shepherd breeds:GERMAN,AUSTRALIAN,B
         ctx.fillStyle="#E7F2EB";
         ctx.fillRect(bx,by,boxW,boxH);
         var placed=face?layoutTile(face, tile, kind, cur==="glow"?"fx":cur, id):null;
-        if(cur==="back"&&id&&placed)drawPortraitBack(placed,id,t,kind,tile);
+        if(cur==="back"&&id&&placed){var backWear={};backWear.back=id;drawBack(placed,backWear,t,kind,tile);}
         if(face&&placed)ctx.drawImage(face, placed.x, placed.y, placed.w, placed.h);
-        if((cur==="fx"||cur==="glow")&&id)drawHalo(tile,id,t);
+        if((cur==="fx"||cur==="glow")&&id){var glowWear={fx:id};if(!paintGear(tile,kind,glowWear,"front"))drawHalo(tile,id,t);}
         if(id&&face&&placed&&(cur==="head"||cur==="face"||cur==="neck")){
           var one={};
           one[cur]=id;
