@@ -1136,12 +1136,6 @@ Birthday party:CAKE,CANDLES,BALLOON,PRESENTS|Shepherd breeds:GERMAN,AUSTRALIAN,B
     if(!dest||!pack||!wear) return false;
     var drew=false;
     var hatInfo=wear.head&&dest.meta.items[wear.head];
-    if(pass==="front"&&hatInfo&&hatInfo.cover&&pack.ears&&pack.ears.complete&&pack.ears.naturalWidth){
-      ctx.save();
-      ctx.globalCompositeOperation="destination-out";
-      ctx.drawImage(pack.ears, dest.x, dest.y, dest.w, dest.h);
-      ctx.restore();
-    }
     ["head","face","neck","back","fx"].forEach(function(slot){
       var id=wear[slot];
       if(!id) return;
