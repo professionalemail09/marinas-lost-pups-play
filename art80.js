@@ -2,7 +2,7 @@
    Loaded after the game so the desk, title, host line, menu, and owner use them. */
 (function () {
   if (typeof window === "undefined") return;
-  var V = "0-6-13";
+  var V = "0-6-17";
   var SRC = {
     bear: "assets/characters/80s/bear-80s.webp?v=" + V,
     kenai: "assets/characters/80s/kenai-80s.webp?v=" + V,
@@ -20,6 +20,30 @@
     if (typeof loadAsset === "function") loadAsset("art80_" + k, SRC[k]);
   });
   window.__art80 = { img: img };
+  function loadGear() {
+    var meta = window.__gearMeta;
+    if (!meta) return;
+    var gear = {};
+    Object.keys(meta).forEach(function (kind) {
+      if (!meta[kind] || !meta[kind].items) return;
+      var bucket = {};
+      var ear = new Image();
+      ear.src = "assets/characters/80s/gear/" + kind + "/ears.webp?v=" + V;
+      bucket.ears = ear;
+      if (typeof loadAsset === "function") loadAsset("gear_" + kind + "_ears", ear.src);
+      Object.keys(meta[kind].items).forEach(function (id) {
+        var info = meta[kind].items[id];
+        if (!info || !info.file || info.hide) return;
+        var im = new Image();
+        im.src = "assets/characters/80s/gear/" + kind + "/" + info.file + "?v=" + V;
+        bucket[id] = im;
+        if (typeof loadAsset === "function") loadAsset("gear_" + kind + "_" + id, im.src);
+      });
+      gear[kind] = bucket;
+    });
+    window.__art80.gear = gear;
+  }
+  loadGear();
 
   function ready(im) { return im && im.complete && im.naturalWidth; }
   function bust(im, cx, foot, h) {
