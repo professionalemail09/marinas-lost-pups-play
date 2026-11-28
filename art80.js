@@ -2,7 +2,7 @@
    Loaded after the game so the desk, title, host line, menu, and owner use them. */
 (function () {
   if (typeof window === "undefined") return;
-  var V = "0-6-12";
+  var V = "0-6-13";
   var SRC = {
     bear: "assets/characters/80s/bear-80s.webp?v=" + V,
     kenai: "assets/characters/80s/kenai-80s.webp?v=" + V,
@@ -299,8 +299,13 @@
     var prev = drawRival;
     function wrapped(x, y, sc, col) {
       var c = String(col || "").toLowerCase();
-      if ((c === "#e6c98a" || c === "#f0d7a4") && drawBust(img.kenaiA, x, y, sc, 1.12)) return;
-      if (c === "#2a1810" && drawBust(img.bearA, x, y, sc, 1)) return;
+      if (c === "#14151c") return prev.apply(this, arguments);
+      var kenai = c === "#e6c98a" || c === "#f0d7a4" || c === "#f2f2f2" || c === "#fff6ea" || c === "#e8a25a";
+      var sum = 0;
+      for (var i = 0; i < c.length; i++) sum += c.charCodeAt(i);
+      if (!kenai && c !== "#2a1810" && c !== "#333" && c !== "#333333") kenai = sum % 2 === 1;
+      if (kenai && drawBust(img.kenaiA, x, y, sc, 1.12)) return;
+      if (drawBust(img.bearA, x, y, sc, 1)) return;
       return prev.apply(this, arguments);
     }
     wrapped.__art80 = true;
