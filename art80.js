@@ -2,7 +2,7 @@
    Loaded after the game so the desk, title, host line, menu, and owner use them. */
 (function () {
   if (typeof window === "undefined") return;
-  var V = "0-6-11";
+  var V = "0-6-13";
   var SRC = {
     bear: "assets/characters/80s/bear-80s.webp?v=" + V,
     kenai: "assets/characters/80s/kenai-80s.webp?v=" + V,
@@ -280,12 +280,32 @@
     window.drawOwner = wrapped;
   }
 
+  function drawBust(im, x, y, sc, mul) {
+    if (!ready(im) || typeof ctx === "undefined") return false;
+    var h = 92 * (sc || 1) * (mul || 1);
+    var w = h * (im.naturalWidth / im.naturalHeight);
+    var closet = window.__closet;
+    var kind = im === img.kenaiA ? "kenai" : im === img.marinaA ? "marinaA" : "bear";
+    var wear = closet && closet.outfit ? closet.outfit(kind === "marinaA" ? "marina" : kind) : null;
+    var box = { x: x - w / 2, y: y - h * 0.92, w: w, h: h };
+    if (closet && wear && closet.dressBack) closet.dressBack(ctx, box, wear, 0, kind);
+    ctx.drawImage(im, box.x, box.y, box.w, box.h);
+    if (closet && wear && closet.dressGear) closet.dressGear(ctx, box, wear, 0, kind);
+    if (closet && wear && closet.dressFront) closet.dressFront(ctx, box, wear, 0, kind);
+    return true;
+  }
   function patchRival() {
     if (typeof drawRival !== "function" || drawRival.__art80) return;
     var prev = drawRival;
-    function wrapped(x, y, sc, col, tm, opt) {
-      var quiz = typeof D !== "undefined" && D && D.id === "fetch";
-      if (quiz) return prev.call(this, x, y, sc, "#14151c", tm, opt);
+    function wrapped(x, y, sc, col) {
+      var c = String(col || "").toLowerCase();
+      if (c === "#14151c") return prev.apply(this, arguments);
+      var kenai = c === "#e6c98a" || c === "#f0d7a4" || c === "#f2f2f2" || c === "#fff6ea" || c === "#e8a25a";
+      var sum = 0;
+      for (var i = 0; i < c.length; i++) sum += c.charCodeAt(i);
+      if (!kenai && c !== "#2a1810" && c !== "#333" && c !== "#333333") kenai = sum % 2 === 1;
+      if (kenai && drawBust(img.kenaiA, x, y, sc, 1.12)) return;
+      if (drawBust(img.bearA, x, y, sc, 1)) return;
       return prev.apply(this, arguments);
     }
     wrapped.__art80 = true;
