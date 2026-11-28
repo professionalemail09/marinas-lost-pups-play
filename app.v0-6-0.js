@@ -1135,6 +1135,13 @@ Birthday party:CAKE,CANDLES,BALLOON,PRESENTS|Shepherd breeds:GERMAN,AUSTRALIAN,B
     var pack=window.__art80&&window.__art80.gear&&window.__art80.gear[kind];
     if(!dest||!pack||!wear) return false;
     var drew=false;
+    var hatInfo=wear.head&&dest.meta.items[wear.head];
+    if(pass==="front"&&hatInfo&&hatInfo.cover&&pack.ears&&pack.ears.complete&&pack.ears.naturalWidth){
+      ctx.save();
+      ctx.globalCompositeOperation="destination-out";
+      ctx.drawImage(pack.ears, dest.x, dest.y, dest.w, dest.h);
+      ctx.restore();
+    }
     ["head","face","neck","back","fx"].forEach(function(slot){
       var id=wear[slot];
       if(!id) return;
@@ -1146,7 +1153,7 @@ Birthday party:CAKE,CANDLES,BALLOON,PRESENTS|Shepherd breeds:GERMAN,AUSTRALIAN,B
       var im=pack[key];
       if(im&&im.complete&&im.naturalWidth) ctx.drawImage(im, dest.x, dest.y, dest.w, dest.h);
     });
-    if(pass==="front"&&wear.head&&pack.ears&&pack.ears.complete&&pack.ears.naturalWidth){
+    if(pass==="front"&&wear.head&&!(hatInfo&&hatInfo.cover)&&pack.ears&&pack.ears.complete&&pack.ears.naturalWidth){
       ctx.drawImage(pack.ears, dest.x, dest.y, dest.w, dest.h);
     }
     return drew;
