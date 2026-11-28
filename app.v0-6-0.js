@@ -717,10 +717,11 @@ Birthday party:CAKE,CANDLES,BALLOON,PRESENTS|Shepherd breeds:GERMAN,AUSTRALIAN,B
   // back: midpoint of the shoulders. w is the shoulder span.
   var LAND={
     bear:{
-      head:{x:132/256,y:40/256,w:96/256,rot:0},
-      eye:{x:140/256,y:88/256,w:70/256,rot:0},
-      neck:{x:132/256,y:208/256,w:90/256,rot:0},
-      back:{x:128/256,y:242/256,w:120/256},
+      ears:{x:128/256,y:10/256,w:196/256},
+      head:{x:128/256,y:36/256,w:100/256,rot:Math.atan2(8,64)},
+      eye:{x:136/256,y:94/256,w:64.5/256,rot:Math.atan2(8,64)},
+      neck:{x:140/256,y:172/256,w:88/256,rot:Math.atan2(8,64)},
+      back:{x:136/256,y:200/256,w:150/256},
       bust:1
     },
     kenai:{
@@ -767,6 +768,32 @@ Birthday party:CAKE,CANDLES,BALLOON,PRESENTS|Shepherd breeds:GERMAN,AUSTRALIAN,B
   }
   function layoutTile(im, tile, kind, slot, id){
     var L=LAND[kind];
+    if(L.ears&&(slot==="head"||slot==="face"||slot==="neck")){
+      var top,bot,left,right;
+      if(slot==="head"){
+        top=Math.max(0, L.ears.y-0.04);
+        bot=Math.min(1, L.eye.y+0.22);
+        left=Math.max(0, L.ears.x-L.ears.w/2-0.03);
+        right=Math.min(1, L.ears.x+L.ears.w/2+0.03);
+      }else if(slot==="face"){
+        top=Math.max(0, L.eye.y-0.16);
+        bot=Math.min(1, L.eye.y+0.18);
+        left=Math.max(0, L.eye.x-0.32);
+        right=Math.min(1, L.eye.x+0.32);
+      }else{
+        top=Math.max(0, L.neck.y-0.16);
+        bot=Math.min(1, L.neck.y+0.2);
+        left=Math.max(0, L.neck.x-0.3);
+        right=Math.min(1, L.neck.x+0.3);
+      }
+      var scale=Math.min(tile.w/((right-left)*im.naturalWidth), tile.h/((bot-top)*im.naturalHeight));
+      var dw=im.naturalWidth*scale, dh=im.naturalHeight*scale;
+      return {
+        x:tile.x+tile.w/2-((left+right)/2)*dw,
+        y:tile.y+tile.h/2-((top+bot)/2)*dh,
+        w:dw, h:dh
+      };
+    }
     var focus=slot==="face"?L.eye:slot==="neck"?L.neck:slot==="back"?L.back:L.head;
     var headSrc=L.head.w*im.naturalWidth;
     var above=0.35, below=1.05;
